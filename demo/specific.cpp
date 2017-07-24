@@ -20,8 +20,8 @@ int main()
         [](const skills_t& skills)
         {std::cout << "skills has changed" << std::endl;});
     
-    person.set<name>("bla");
-    person.set<age>(45);
+    person.set<name>("MARIA");
+    person.set<age>(27);
     
     person.apply<skills>(
         [](skills_t& skills)

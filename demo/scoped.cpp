@@ -14,8 +14,8 @@ int main()
     {
         auto sn = observable::scoped_on_change(person);
         
-        person.set<name>("bla");
-        person.set<age>(45);
+        person.set<name>("MARIA");
+        person.set<age>(27);
     
         person.apply<skills>(
             [](skills_t& skills)
