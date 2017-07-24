@@ -7,7 +7,7 @@ int main()
 {
     person_t model{"maria", 26};
 
-    observable_person person(model, model.name, model.age, model.skills);
+    auto person = observable::factory(model);
     
     person.on_change([]{std::cout << "person has changed" << std::endl;});
     

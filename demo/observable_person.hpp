@@ -17,3 +17,12 @@ using observable_person = observable::class_<
     observable::member<std::size_t, age>,
     observable::member<skills_t,    skills>
     >;
+
+namespace observable {
+
+inline observable_person factory(person_t& model)
+{
+    return observable_person(model, model.name, model.age, model.skills);
+}
+    
+}
