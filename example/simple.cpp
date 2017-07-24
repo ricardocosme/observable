@@ -8,7 +8,7 @@ int main()
 
     observable_person person(model, model.name, model.age, model.skills);
     
-    person.any_change.connect(
+    person.on_change(
         []{std::cout << "any change" << std::endl;});
     
     person.set<name>("bla");
