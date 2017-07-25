@@ -13,13 +13,18 @@ struct member
     using name = M;
 };
             
-template<typename Model, typename... Members>
-struct class_ : class_member<class_<Model, Members...>, Members...>
+template<typename Model_, typename... Members>
+struct class_ : class_member<class_<Model_, Members...>, Members...>
 {
+    using Model = Model_;
     using Base = class_member<class_<Model, Members...>, Members...>;
     
     Base& as_base() noexcept
     { return static_cast<Base&>(*this); }
+    
+    const Base& as_base() const noexcept
+    { return static_cast<const Base&>(*this); }
+    
     class_(Model& model,
            typename get_type<Members>::type&... args)
         : Base(*this, args...)
@@ -32,6 +37,10 @@ struct class_ : class_member<class_<Model, Members...>, Members...>
         as_base().set(M{}, std::move(o));
     }
 
+    template<typename M>
+    auto get() const noexcept -> decltype(as_base().get(M{}))
+    { return as_base().get(M{}); }
+    
     template<typename M, typename F>
     void apply(F&& f)
     {
@@ -53,11 +62,11 @@ struct class_ : class_member<class_<Model, Members...>, Members...>
     const Model& model() const noexcept
     { return _model; }
     
-    boost::signals2::signal<void()> any_change;    
+    boost::signals2::signal<void(const Model&)> any_change;
 private:    
     bool _under_transaction{false};
     Model& _model;
-    template <typename> friend class observable::class_member;
+    template <typename, typename...> friend struct observable::class_member;
     template <typename> friend class observable::scoped_on_change_t;
 };
 

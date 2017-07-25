@@ -17,6 +17,7 @@ template<typename Class, typename Member, typename... Members>
 struct class_member<Class, Member, Members...> : class_member<Class, Members...>
 {
     using Base = class_member<Class, Members...>;
+    using Base::get;
     using Base::set;
     using Base::apply;
     using Base::on_change;
@@ -31,13 +32,16 @@ struct class_member<Class, Member, Members...> : class_member<Class, Members...>
         , _value(o)
     {}
 
+    const T& get(M) const noexcept
+    { return _value; }
+    
     void set(M, T o)
     {
         _value = std::move(o);
         if (!_parent._under_transaction)
         {
             _on_change(_value);
-            _parent.any_change();
+            _parent.any_change(_parent._model);
         }
     }
 
@@ -51,7 +55,7 @@ struct class_member<Class, Member, Members...> : class_member<Class, Members...>
         if (!_parent._under_transaction)
         {
             _on_change(_value);
-            _parent.any_change();
+            _parent.any_change(_parent._model);
         }        
     }
 
@@ -77,13 +81,16 @@ struct class_member<Class, Member>
         , _value(o)
     {}
 
+    const T& get(M) const noexcept
+    { return _value; }
+    
     void set(M, T o)
     {
         _value = std::move(o);
         if (!_parent._under_transaction)
         {
             _on_change(_value);
-            _parent.any_change();
+            _parent.any_change(_parent._model);
         }
     }
 
@@ -97,7 +104,7 @@ struct class_member<Class, Member>
         if (!_parent._under_transaction)
         {
             _on_change(_value);
-            _parent.any_change();
+            _parent.any_change(_parent._model);
         }        
     }
 

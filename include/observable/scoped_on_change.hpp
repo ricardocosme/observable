@@ -14,7 +14,7 @@ public:
     
     ~scoped_on_change_t()
     {
-        _observable.any_change();
+        _observable.any_change(_observable.model());
         _observable._under_transaction = false;
     }
 };

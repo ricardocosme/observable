@@ -9,7 +9,9 @@ int main()
 
     auto person = observable::factory(model);
     
-    person.on_change([]{std::cout << "person has changed" << std::endl;});
+    person.on_change(
+        [](const person_t& p){std::cout << "person " << p.name
+                                        << " has changed" << std::endl;});
     
     {
         auto sn = observable::scoped_on_change(person);
