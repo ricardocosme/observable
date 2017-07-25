@@ -43,7 +43,7 @@ public:
     }
 
     template<typename M>
-    auto get() const noexcept -> decltype(as_base().get(M{}))
+    auto get() const noexcept -> decltype(get(M{}))
     { return as_base().get(M{}); }
     
     template<typename M, typename F>
