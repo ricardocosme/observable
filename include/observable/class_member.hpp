@@ -45,9 +45,6 @@ struct class_member<Class, Member, Members...> : class_member<Class, Members...>
         }
     }
 
-    const T& get() const noexcept
-    { return _value; }
-    
     template<typename F>
     void apply(M, F&& f)
     {
@@ -94,9 +91,6 @@ struct class_member<Class, Member>
         }
     }
 
-    const T& get() const noexcept
-    { return _value; }
-    
     template<typename F>
     void apply(M, F&& f)
     {
