@@ -4,12 +4,6 @@
 
 namespace observable {
     
-template<typename T>
-struct get_type
-{
-    using type = typename T::type;
-};
-    
 template<typename Class, typename... Members>    
 struct class_member;
 
@@ -17,25 +11,25 @@ template<typename Class, typename Member, typename... Members>
 struct class_member<Class, Member, Members...> : class_member<Class, Members...>
 {
     using Base = class_member<Class, Members...>;
-    using Base::get;
-    using Base::set;
     using Base::apply;
+    using Base::get;
     using Base::on_change;
+    using Base::set;
     
     using T = typename Member::type;
-    using M = typename Member::name;
+    using Tag = typename Member::tag;
 
     template<typename... Ts>
-    class_member(Class& parent, T& o, Ts&&... ts)
-        : Base(parent, std::forward<Ts>(ts)...)
+    class_member(Class& parent, T& o, Ts&... ts)
+        : Base(parent, ts...)
         , _parent(parent)
         , _value(o)
     {}
 
-    const T& get(M) const noexcept
+    const T& get(Tag) const noexcept
     { return _value; }
     
-    void set(M, T o)
+    void set(Tag, T o)
     {
         _value = std::move(o);
         if (!_parent._under_transaction)
@@ -46,7 +40,7 @@ struct class_member<Class, Member, Members...> : class_member<Class, Members...>
     }
 
     template<typename F>
-    void apply(M, F&& f)
+    void apply(Tag, F&& f)
     {
         f(_value);
         if (!_parent._under_transaction)
@@ -57,7 +51,7 @@ struct class_member<Class, Member, Members...> : class_member<Class, Members...>
     }
 
     template<typename F>
-    boost::signals2::connection on_change(M, F&& f)
+    boost::signals2::connection on_change(Tag, F&& f)
     {
         return _on_change.connect(std::forward<F>(f));
     }
@@ -67,21 +61,21 @@ struct class_member<Class, Member, Members...> : class_member<Class, Members...>
     boost::signals2::signal<void(T)> _on_change;
 };
 
-template<typename Class, typename Member>    
+template<typename Class, typename Member>
 struct class_member<Class, Member>
 {
     using T = typename Member::type;
-    using M = typename Member::name;
+    using Tag = typename Member::tag;
     
     class_member(Class& parent, T& o)
         : _parent(parent)
         , _value(o)
     {}
 
-    const T& get(M) const noexcept
+    const T& get(Tag) const noexcept
     { return _value; }
     
-    void set(M, T o)
+    void set(Tag, T o)
     {
         _value = std::move(o);
         if (!_parent._under_transaction)
@@ -92,7 +86,7 @@ struct class_member<Class, Member>
     }
 
     template<typename F>
-    void apply(M, F&& f)
+    void apply(Tag, F&& f)
     {
         f(_value);
         if (!_parent._under_transaction)
@@ -103,7 +97,7 @@ struct class_member<Class, Member>
     }
 
     template<typename F>
-    boost::signals2::connection on_change(M, F&& f)
+    boost::signals2::connection on_change(Tag, F&& f)
     {
         return _on_change.connect(std::forward<F>(f));
     }

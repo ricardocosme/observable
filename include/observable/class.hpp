@@ -1,23 +1,27 @@
 #pragma once
 
 #include "observable/class_member.hpp"
-#include "observable/scoped_on_change.hpp"
 #include <boost/signals2.hpp>
 
 namespace observable {
 
-template<typename T, typename M>
+template<typename>
+class scoped_on_change_t;
+    
+template<typename Type, typename Tag>
 struct member
 {
-    using type = T;
-    using name = M;
+    using type = Type;
+    using tag = Tag;
 };
             
 template<typename Model_, typename... Members>
-struct class_ : class_member<class_<Model_, Members...>, Members...>
-{
+class class_ : class_member<class_<Model_, Members...>, Members...>
+{    
+public:
     using Model = Model_;
     using Base = class_member<class_<Model, Members...>, Members...>;
+private:
     
     Base& as_base() noexcept
     { return static_cast<Base&>(*this); }
@@ -25,8 +29,9 @@ struct class_ : class_member<class_<Model_, Members...>, Members...>
     const Base& as_base() const noexcept
     { return static_cast<const Base&>(*this); }
     
+public:    
     class_(Model& model,
-           typename get_type<Members>::type&... args)
+           typename Members::type&... args)
         : Base(*this, args...)
         , _model(model)
     {}
