@@ -54,13 +54,13 @@ struct unordered_set_impl
     typename type::iterator begin() noexcept
     { return _value.begin(); }
 
-    typename type::iterator cbegin() const noexcept
+    typename type::const_iterator cbegin() const noexcept
     { return _value.cbegin(); }
 
     typename type::iterator end() noexcept
     { return _value.end(); }
     
-    typename type::iterator cend() const noexcept
+    typename type::const_iterator cend() const noexcept
     { return _value.cend(); }
     
     bool empty() const noexcept
