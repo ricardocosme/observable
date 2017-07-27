@@ -18,10 +18,12 @@ project demos
 exe simple : demo/simple.cpp ;
 exe specific : demo/specific.cpp ;
 exe scoped : demo/scoped.cpp ;
+exe unordered_set : test/unordered_set.cpp ;
 
 install stage
   : simple
     specific
     scoped
+    unordered_set
   ;
   

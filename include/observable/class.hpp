@@ -6,62 +6,97 @@
 
 #pragma once
 
-#include "observable/class_member.hpp"
+#include "observable/class_value.hpp"
+#include "observable/unordered_set.hpp"
 #include <boost/signals2.hpp>
+#include <boost/fusion/include/map.hpp>
+#include <boost/fusion/include/at_key.hpp>
+#include <boost/fusion/include/make_map.hpp>
+#include <boost/fusion/support/pair.hpp>
+#include <boost/fusion/include/pair.hpp>
+#include <type_traits>
 
 namespace observable {
 
 template<typename>
 class scoped_on_change_t;
-    
-template<typename Type, typename Tag>
-struct member
+        
+template<typename Class, typename Member, typename Enable = void>
+struct member_traits;
+
+template<typename Class, typename Member>
+struct member_traits<
+    Class,
+    Member,
+    typename std::enable_if<
+        std::is_same<
+            typename Member::member_type,
+            value_member_tag
+        >::value
+    >::type
+>
 {
-    using type = Type;
-    using tag = Tag;
+    using type = value_impl<Class, typename Member::type>;
 };
-            
+        
+template<typename Class, typename Member>
+struct member_traits<
+    Class,
+    Member,
+    typename std::enable_if<
+        std::is_same<
+            typename Member::member_type,
+            unordered_set_member_tag
+        >::value
+    >::type
+>
+{
+    using type = unordered_set_impl<Class, typename Member::type>;
+};
+    
 template<typename Model_, typename... Members>
-class class_ : class_member<class_<Model_, Members...>, Members...>
+class class_ 
 {    
 public:
     using Model = Model_;
-    using Base = class_member<class_<Model, Members...>, Members...>;
-private:
+    using Tag2Member = boost::fusion::map<
+        boost::fusion::pair<
+            typename Members::tag,
+            typename member_traits<class_<Model, Members...>, Members>::type
+        >...>;
     
-    Base& as_base() noexcept
-    { return static_cast<Base&>(*this); }
-    
-    const Base& as_base() const noexcept
-    { return static_cast<const Base&>(*this); }
-    
-public:    
     class_(Model& model,
            typename Members::type&... args)
-        : Base(*this, args...)
-        , _model(model)
+        : _model(model)
+        , tag2member(boost::fusion::pair<
+                     typename Members::tag,
+                     typename member_traits<class_<Model, Members...>, Members>::type>
+                     (typename member_traits<class_<Model, Members...>, Members>::type
+                      (*this, args))...)
     {}
 
     template<typename M, typename V>
     void set(V o)
     {
-        as_base().set(M{}, std::move(o));
+        return boost::fusion::at_key<M>(tag2member).set(std::move(o));
     }
 
     template<typename M>
-    auto get() const noexcept -> decltype(get(M{}))
-    { return as_base().get(M{}); }
+    auto get() ->
+        decltype(boost::fusion::at_key<M>(
+                     std::declval<typename std::add_lvalue_reference<Tag2Member>::type>()))
+    { return boost::fusion::at_key<M>(tag2member); }
     
     template<typename M, typename F>
     void apply(F&& f)
     {
-        as_base().apply(M{}, std::forward<F>(f));
+        return boost::fusion::at_key<M>(tag2member).apply(std::forward<F>(f));
     }
     
     template<typename M, typename F>
     boost::signals2::connection on_change(F&& f)
     {
-        return as_base().on_change(M{}, std::forward<F>(f));
+        return boost::fusion::at_key<M>(tag2member).on_change(std::forward<F>(f));
     }
     
     template<typename F>
@@ -77,8 +112,10 @@ public:
 private:    
     bool _under_transaction{false};
     Model& _model;
-    template <typename, typename...> friend struct observable::class_member;
+    Tag2Member tag2member;
     template <typename> friend class observable::scoped_on_change_t;
+    template <typename,typename> friend struct observable::value_impl;
+    template <typename,typename> friend struct observable::unordered_set_impl;
 };
 
 }

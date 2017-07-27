@@ -20,6 +20,10 @@ int main()
         [](const skills_t& skills)
         {std::cout << "skills has changed" << std::endl;});
     
+    person.get<kids>().on_insert(
+        [](const kids_t& skills)
+        {std::cout << "kids has inserted" << std::endl;});
+    
     person.set<name>("MARIA");
     person.set<age>(27);
     
@@ -28,4 +32,6 @@ int main()
         {
             skills.emplace(8, "woodworking");
         });
+    
+    person.get<kids>().emplace("josefina");
 };
