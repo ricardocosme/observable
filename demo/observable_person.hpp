@@ -4,6 +4,7 @@
 
 #include "observable/class.hpp"
 #include "observable/unordered_set.hpp"
+#include "observable/map.hpp"
 
 #include <cstddef>
 #include <string>
@@ -17,7 +18,7 @@ using observable_person = observable::class_<
     person_t,
     observable::value<std::string, name>,
     observable::value<std::size_t, age>,
-    observable::value<skills_t,    skills>,
+    observable::map<skills_t,    skills>,
     observable::unordered_set<kids_t, kids>
     >;
 

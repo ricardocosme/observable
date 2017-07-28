@@ -7,7 +7,7 @@
 int main()
 {
     person_t model{"maria", 26};
-
+    
     auto person = observable::factory(model);
     
     person.on_change(
@@ -17,14 +17,22 @@ int main()
     person.set<name>("MARIA");
     person.set<age>(27);
     
-    person.apply<skills>(
-        [](skills_t& skills)
-        {
-            skills.emplace(8, "woodworking");
-            skills.emplace(7, "cooking");
-        });
-
+    // skills.emplace(8, "woodworking");
+    // skills.emplace(7, "cooking");
+    // person.apply<skills>(
+    //     [](skills_t& skills)
+    //     {
+    //         skills.emplace(8, "woodworking");
+    //         skills.emplace(7, "cooking");
+    //     });
+    model.skills.emplace(8, "woodworking");
+    
     person.get<kids>().emplace("josefina");
+    auto o = person.get<skills>().at(8);
+    o.set("Woodworking");
+
+    for(auto p : model.skills)
+        std::cout << p.second << std::endl;
     
     std::cout << model.name << std::endl
               << model.age << std::endl;
