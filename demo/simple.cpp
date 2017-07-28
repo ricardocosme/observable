@@ -16,16 +16,9 @@ int main()
     
     person.set<name>("MARIA");
     person.set<age>(27);
-    
-    // skills.emplace(8, "woodworking");
-    // skills.emplace(7, "cooking");
-    // person.apply<skills>(
-    //     [](skills_t& skills)
-    //     {
-    //         skills.emplace(8, "woodworking");
-    //         skills.emplace(7, "cooking");
-    //     });
-    model.skills.emplace(8, "woodworking");
+
+    person.get<skills>().emplace(8, "woodworking");
+    person.get<skills>().emplace(7, "cooking");
     
     person.get<kids>().emplace("josefina");
     auto o = person.get<skills>().at(8);

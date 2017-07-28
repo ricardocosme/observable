@@ -19,10 +19,6 @@ int main()
         person.set<name>("MARIA");
         person.set<age>(27);
     
-        // person.apply<skills>(
-        //     [](skills_t& skills)
-        //     {
-        //         skills.emplace(8, "woodworking");
-        //     });
+        person.get<skills>().emplace(8, "woodworking");
     }
 };
