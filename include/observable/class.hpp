@@ -102,14 +102,14 @@ public:
     template<typename F>
     boost::signals2::connection on_change(F&& f)
     {
-        return any_change.connect(std::forward<F>(f));
+        return _on_change.connect(std::forward<F>(f));
     }
     
     const Model& model() const noexcept
     { return _model; }
     
-    boost::signals2::signal<void(const Model&)> any_change;
 private:    
+    boost::signals2::signal<void(const Model&)> _on_change;
     bool _under_transaction{false};
     Model& _model;
     Tag2Member tag2member;

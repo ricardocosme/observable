@@ -27,70 +27,70 @@ struct unordered_set_impl
     using parent_t = Class;
     
     unordered_set_impl(parent_t& parent, type& value)
-        : _value(value)
+        : _model(value)
         , _parent(parent)
     {}
     // void set(type o)
     // {
-    //     _value = std::move(o);
+    //     _model = std::move(o);
     //     if (!_parent._under_transaction)
     //     {
-    //         _on_change(_value);
-    //         _parent.any_change(_parent._model);
+    //         _on_change(_model);
+    //         _parent._on_change(_parent._model);
     //     }
     // }
     // const type& get() const noexcept
-    // { return _value; }
+    // { return _model; }
     // template<typename F>
     // void apply(F&& f)
     // {
-    //     f(_value);
+    //     f(_model);
     //     if (!_parent._under_transaction)
     //     {
-    //         _on_change(_value);
-    //         _parent.any_change(_parent._model);
+    //         _on_change(_model);
+    //         _parent._on_change(_parent._model);
     //     }        
     // }
     typename type::iterator begin() noexcept
-    { return _value.begin(); }
+    { return _model.begin(); }
 
     typename type::const_iterator cbegin() const noexcept
-    { return _value.cbegin(); }
+    { return _model.cbegin(); }
 
     typename type::iterator end() noexcept
-    { return _value.end(); }
+    { return _model.end(); }
     
     typename type::const_iterator cend() const noexcept
-    { return _value.cend(); }
+    { return _model.cend(); }
     
     bool empty() const noexcept
-    { return _value.empty(); }
+    { return _model.empty(); }
     
     typename type::size_type size() const noexcept
-    { return _value.size(); }
+    { return _model.size(); }
     
     typename type::size_type max_size() const noexcept
-    { return _value.max_size(); }
+    { return _model.max_size(); }
         
     void clear() noexcept
     {
-        _value.clear();
+        _model.clear();
         if (!_parent._under_transaction)
         {
-            _on_erase(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);
+            _on_erase(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);
         }
     }
     
     typename type::iterator erase(typename type::const_iterator pos)        
     {
-        auto it = _value.erase(pos);
+        auto it = _model.erase(pos);
         if (!_parent._under_transaction)
         {
-            _on_erase(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);
+            _on_erase(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);
         }
         return it;
     }
@@ -98,24 +98,24 @@ struct unordered_set_impl
     typename type::iterator erase(typename type::const_iterator first,
                                   typename type::const_iterator last)        
     {
-        auto it = _value.erase(first, last);
+        auto it = _model.erase(first, last);
         if (!_parent._under_transaction)
         {
-            _on_erase(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);
+            _on_erase(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);
         }
         return it;
     }
     
     typename type::size_type erase(const typename type::key_type& key)
     {
-        auto n = _value.erase(key);
+        auto n = _model.erase(key);
         if (n > 0 && !_parent._under_transaction)
         {
-            _on_erase(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);
+            _on_erase(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);
         }
         return n;
     }
@@ -123,12 +123,12 @@ struct unordered_set_impl
     template<typename... Args>
     std::pair<typename type::iterator, bool> emplace(Args&&... args)
     {
-        auto ret = _value.emplace(std::forward<Args>(args)...);
+        auto ret = _model.emplace(std::forward<Args>(args)...);
         if (ret.second && !_parent._under_transaction)
         {
-            _on_insert(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);            
+            _on_insert(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);            
         }
         return ret;
     }
@@ -137,13 +137,13 @@ struct unordered_set_impl
     typename type::iterator emplace_hint
     (typename type::const_iterator hint, Args&&... args)
     {
-        auto before_size = _value.size();
-        auto it = _value.emplace_hint(hint, std::forward<Args>(args)...);
-        if (_value.size() != before_size && !_parent._under_transaction)
+        auto before_size = _model.size();
+        auto it = _model.emplace_hint(hint, std::forward<Args>(args)...);
+        if (_model.size() != before_size && !_parent._under_transaction)
         {
-            _on_insert(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);            
+            _on_insert(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);            
         }
         return it;
     }
@@ -151,12 +151,12 @@ struct unordered_set_impl
     std::pair<typename type::iterator, bool> insert
     (const typename type::value_type& value)
     {
-        auto ret = _value.insert(value);
+        auto ret = _model.insert(value);
         if (ret.second && !_parent._under_transaction)
         {
-            _on_insert(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);            
+            _on_insert(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);            
         }
         return ret;        
     }
@@ -164,12 +164,12 @@ struct unordered_set_impl
     std::pair<typename type::iterator, bool> insert
     (typename type::value_type&& value)
     {
-        auto ret = _value.insert(std::move(value));
+        auto ret = _model.insert(std::move(value));
         if (ret.second && !_parent._under_transaction)
         {
-            _on_insert(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);            
+            _on_insert(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);            
         }
         return ret;        
     }
@@ -178,13 +178,13 @@ struct unordered_set_impl
     (typename type::const_iterator hint,
      const typename type::value_type& value)
     {
-        auto before_size = _value.size();
-        auto it = _value.insert(hint, value);
-        if (_value.size() != before_size && !_parent._under_transaction)
+        auto before_size = _model.size();
+        auto it = _model.insert(hint, value);
+        if (_model.size() != before_size && !_parent._under_transaction)
         {
-            _on_insert(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);            
+            _on_insert(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);            
         }
         return it;
     }
@@ -193,13 +193,13 @@ struct unordered_set_impl
     (typename type::const_iterator hint,
      typename type::value_type&& value)
     {
-        auto before_size = _value.size();
-        auto it = _value.insert(hint, std::move(value));
-        if (_value.size() != before_size && !_parent._under_transaction)
+        auto before_size = _model.size();
+        auto it = _model.insert(hint, std::move(value));
+        if (_model.size() != before_size && !_parent._under_transaction)
         {
-            _on_insert(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);            
+            _on_insert(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);            
         }
         return it;
     }
@@ -207,13 +207,13 @@ struct unordered_set_impl
     template<typename InputIt>
     void insert(InputIt first, InputIt last)
     {
-        auto before_size = _value.size();
-        _value.insert(first, last);
-        if (_value.size() != before_size && !_parent._under_transaction)
+        auto before_size = _model.size();
+        _model.insert(first, last);
+        if (_model.size() != before_size && !_parent._under_transaction)
         {
-            _on_insert(_value);
-            _on_change(_value);
-            _parent.any_change(_parent._model);            
+            _on_insert(_model);
+            _on_change(_model);
+            _parent._on_change(_parent._model);            
         }
     }
     
@@ -224,35 +224,35 @@ struct unordered_set_impl
     
     void swap(type& other)
     {
-        _value.swap(other);
+        _model.swap(other);
         //TODO: check?
-        _on_insert(_value);
-        _on_erase(_value);
-        _on_change(_value);
-        _parent.any_change(_parent._model);            
+        _on_insert(_model);
+        _on_erase(_model);
+        _on_change(_model);
+        _parent._on_change(_parent._model);            
     }
 
     typename type::size_type count
     (const typename type::key_type& key) const noexcept
-    { return _value.count(key); }
+    { return _model.count(key); }
     
     typename type::iterator find
     (const typename type::key_type& key)
-    { return _value.find(key); }
+    { return _model.find(key); }
     
     typename type::const_iterator find
     (const typename type::key_type& key) const
-    { return _value.find(key); }
+    { return _model.find(key); }
     
     std::pair<typename type::iterator,
               typename type::iterator> equal_range
     (const typename type::key_type& key)
-    { return _value.equal_range(key); }
+    { return _model.equal_range(key); }
     
     std::pair<typename type::const_iterator,
               typename type::const_iterator> equal_range
     (const typename type::key_type& key) const
-    { return _value.equal_range(key); }
+    { return _model.equal_range(key); }
     
     template<typename F>
     boost::signals2::connection on_erase(F&& f)
@@ -272,7 +272,10 @@ struct unordered_set_impl
         return _on_change.connect(std::forward<F>(f));
     }
     
-    type& _value;
+    const Model& model() const noexcept
+    { return _model; }
+    
+    type& _model;
     parent_t& _parent;
     boost::signals2::signal<void(const type&)> _on_erase;
     boost::signals2::signal<void(const type&)> _on_insert;

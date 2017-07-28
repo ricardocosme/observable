@@ -35,7 +35,7 @@ struct value_impl
         if (!_parent._under_transaction)
         {
             _on_change(_value);
-            _parent.any_change(_parent._model);
+            _parent._on_change(_parent._model);
         }
     }
     const type& get() const noexcept
@@ -47,7 +47,7 @@ struct value_impl
         if (!_parent._under_transaction)
         {
             _on_change(_value);
-            _parent.any_change(_parent._model);
+            _parent._on_change(_parent._model);
         }        
     }
     template<typename F>

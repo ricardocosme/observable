@@ -25,7 +25,21 @@ namespace observable {
 
 inline observable_person factory(person_t& model)
 {
-    return observable_person(model, model.name, model.age, model.skills, model.kids);
+    return observable_person(model, model.name, model.age,
+                             model.skills, model.kids);
 }
     
 }
+
+struct operson_t : observable_person
+{
+    using base = observable_person;
+    using base::base;
+    
+    operson_t(person_t model)
+        : base(::observable::factory(_model))
+        , _model(std::move(model))
+    {}
+private:
+    person_t _model;
+};
