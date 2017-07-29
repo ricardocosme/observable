@@ -18,7 +18,11 @@ using observable_person = observable::class_<
     person_t,
     observable::value<std::string, name>,
     observable::value<std::size_t, age>,
-    observable::map<skills_t,    skills>,
+    observable::map<skills_t,
+                    observable::value,
+                    // observable::value_impl<observable::map_impl<person_t, skills_t>,
+                    //                        skills_t::mapped_type, container_tag>,
+                    skills>,
     observable::unordered_set<kids_t, kids>
     >;
 

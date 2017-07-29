@@ -17,7 +17,7 @@ struct map{};
 
 using obs_t = observable::class_<
     foo_t,
-    observable::map<map_t, map>
+    observable::map<map_t, observable::value, map>
     >;
 
 int main()

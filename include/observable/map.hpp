@@ -7,6 +7,7 @@
 #pragma once
 
 #include "observable/class_value.hpp"
+#include "observable/variant.hpp"
 #include "observable/types.hpp"
 
 #include <boost/signals2.hpp>
@@ -16,12 +17,13 @@ namespace observable {
 
 struct map_member_tag {};
     
-template<typename T, typename Tag>
+template<typename T, template <typename, typename> class ObservableValue, typename Tag>
 struct map
 {
     using tag = Tag;
     using type = T;
     using member_type = map_member_tag;
+    using observable_value = ObservableValue<type, tag>;
 };
 
 template<typename Model>    
@@ -66,14 +68,43 @@ private:
     }
     Model& _model;    
 };
+
+template<typename Map, typename ObservableValue, typename Enable = void>
+struct value_traits;
     
-template<typename Class, typename Model>
+template<typename Map, typename ObservableValue>
+struct value_traits<Map, ObservableValue,
+                    typename std::enable_if<
+                        std::is_same<
+                            typename ObservableValue::member_type,
+                            value_member_tag
+                            >::value
+                        >::type>
+{
+    using type = value_impl<Map, typename Map::type::mapped_type, container_tag>;
+};
+    
+template<typename Map, typename ObservableValue>
+struct value_traits<Map, ObservableValue,
+                    typename std::enable_if<
+                        std::is_same<
+                            typename ObservableValue::member_type,
+                            variant_member_tag
+                            >::value
+                        >::type>
+{
+    using type = variant_impl<Map, typename Map::type::mapped_type, container_tag>;
+};
+    
+template<typename Class, typename Model, typename ObservableValue>
 struct map_impl
 {
     using type = Model;
     using parent_t = Class;
-    using reference = value_impl<map_impl<Class, Model>, typename type::mapped_type, container_tag>;
-    using iterator = map_iterator<map_impl<Class, Model>>;
+    using reference = typename value_traits<
+        map_impl<Class, Model, ObservableValue>,
+        ObservableValue>::type;
+    using iterator = map_iterator<map_impl<Class, Model, ObservableValue>>;
     using difference_type = typename type::difference_type;
     
     map_impl(parent_t& parent, type& value)

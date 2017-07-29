@@ -67,7 +67,7 @@ struct member_traits<
     >::type
 >
 {
-    using type = map_impl<Class, typename Member::type>;
+    using type = map_impl<Class, typename Member::type, typename Member::observable_value>;
 };
     
 template<typename Model_, typename... Members>

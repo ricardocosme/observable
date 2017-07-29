@@ -21,6 +21,7 @@ exe scoped : demo/scoped.cpp ;
 exe hide_model : demo/hide_model.cpp ;
 exe unordered_set : test/unordered_set.cpp ;
 exe map : test/map.cpp ;
+exe variant             : test/variant.cpp ;
 
 install stage
   : simple
@@ -29,5 +30,6 @@ install stage
     hide_model
     unordered_set
     map
+    variant
   ;
   
