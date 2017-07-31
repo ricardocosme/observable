@@ -24,4 +24,4 @@ int main()
     const auto& mkids = okids.model();
     for(const auto& kid : mkids)
         std::cout << "kid: " << kid << std::endl;
-};
+}

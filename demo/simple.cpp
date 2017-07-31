@@ -30,4 +30,4 @@ int main()
     std::cout << model.name << std::endl
               << model.age << std::endl;
 ;
-};
+}

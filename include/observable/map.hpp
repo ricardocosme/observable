@@ -11,6 +11,7 @@
 
 #include <boost/signals2.hpp>
 #include <boost/iterator.hpp>
+#include <boost/iterator/reverse_iterator.hpp>
 
 namespace observable {
 
@@ -84,14 +85,32 @@ struct map_impl
     iterator begin() noexcept
     { return iterator(*this, _model.begin()); }
 
+    boost::reverse_iterator<iterator> rbegin() noexcept
+    {
+        return boost::reverse_iterator<iterator>
+            (iterator(*this, _model.end()));
+    }
+    
     typename type::const_iterator cbegin() const noexcept
     { return _model.cbegin(); }
 
+    typename type::const_reverse_iterator crbegin() noexcept
+    { return _model.crbegin(); }
+    
     iterator end() noexcept
     { return iterator(*this, _model.end()); }
     
+    boost::reverse_iterator<iterator> rend() noexcept
+    {
+        return boost::reverse_iterator<iterator>
+            (iterator(*this, _model.begin()));
+    }
+    
     typename type::const_iterator cend() const noexcept
     { return _model.cend(); }
+    
+    typename type::const_reverse_iterator crend() noexcept
+    { return _model.crend(); }
     
     bool empty() const noexcept
     { return _model.empty(); }
