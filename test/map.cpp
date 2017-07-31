@@ -375,7 +375,10 @@ int main()
         bool called{false};
         ob.second.on_change([&called](const std::string&)
                             { called = true; });
-        ob.second.set("def");
+        auto it2 = obs.get<map>().find(2);
+        assert(it2 != obs.get<map>().end());
+        auto ob2 = *it2;
+        ob2.second.set("def");
         assert(ob.second.get() == "def");
         assert(called);        
     }

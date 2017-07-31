@@ -12,6 +12,7 @@
 
 #include <boost/signals2.hpp>
 #include <boost/iterator.hpp>
+#include <unordered_map>
 
 namespace observable {
 
@@ -64,6 +65,7 @@ private:
         auto it = this->base_reference();
         //TODO:lvalue ref?
         auto& p = *it;
+        
         return std::make_pair(p.first, typename Model::reference(_model, p.second, it));
     }
     Model& _model;    
@@ -108,79 +110,79 @@ struct map_impl
     using difference_type = typename type::difference_type;
     
     map_impl(parent_t& parent, type& value)
-        : _model(value)
-        , _parent(parent)
+        : _model(&value)
+        , _parent(&parent)
     {}
     
     iterator begin() noexcept
-    { return iterator(*this, _model.begin()); }
+    { return iterator(*this, _model->begin()); }
 
     typename type::const_iterator cbegin() const noexcept
-    { return _model.cbegin(); }
+    { return _model->cbegin(); }
 
     iterator end() noexcept
-    { return iterator(*this, _model.end()); }
+    { return iterator(*this, _model->end()); }
     
     typename type::const_iterator cend() const noexcept
-    { return _model.cend(); }
+    { return _model->cend(); }
     
     bool empty() const noexcept
-    { return _model.empty(); }
+    { return _model->empty(); }
     
     typename type::size_type size() const noexcept
-    { return _model.size(); }
+    { return _model->size(); }
     
     typename type::size_type max_size() const noexcept
-    { return _model.max_size(); }
+    { return _model->max_size(); }
 
     reference at(const typename type::key_type& key)
     {
-        auto it = _model.lower_bound(key);
-        if (it == _model.end() || _model.key_comp()(key, (*it).first))
+        auto it = _model->lower_bound(key);
+        if (it == _model->end() || _model->key_comp()(key, (*it).first))
             throw std::out_of_range("map::at");
         return reference(*this, (*it).second, it);
     }
     
     const typename type::mapped_type& at(const typename type::key_type& key) const
-    { return _model.at(key); }
+    { return _model->at(key); }
     
     reference operator[](const typename type::key_type& key)
     {
-        auto it = _model.lower_bound(key);
-        if (it == _model.end() || _model.key_comp()(key, (*it).first))
-            it = _model.insert(it, typename type::value_type
+        auto it = _model->lower_bound(key);
+        if (it == _model->end() || _model->key_comp()(key, (*it).first))
+            it = _model->insert(it, typename type::value_type
                                (key, typename type::mapped_type()));
         return reference(*this, (*it).second, it);
     }
     
     reference operator[](typename type::key_type&& key)
     {
-        auto it = _model.lower_bound(key);
-        if (it == _model.end() || _model.key_comp()(key, (*it).first))
-            it = _model.insert(it, typename type::value_type
+        auto it = _model->lower_bound(key);
+        if (it == _model->end() || _model->key_comp()(key, (*it).first))
+            it = _model->insert(it, typename type::value_type
                                (std::move(key), typename type::mapped_type()));
         return reference(*this, (*it).second, it);
     }
     
     void clear() noexcept
     {
-        _model.clear();
-        if (!_parent._under_transaction)
+        _model->clear();
+        if (!_parent->_under_transaction)
         {
-            _on_erase(_model, typename type::const_iterator{});
-            _on_change(_model);
-            _parent._on_change(_parent._model);
+            _on_erase(*_model, typename type::const_iterator{});
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));
         }
     }
     
     iterator erase(typename type::const_iterator pos)        
     {
-        auto it = _model.erase(pos);
-        if (!_parent._under_transaction)
+        auto it = _model->erase(pos);
+        if (!_parent->_under_transaction)
         {
-            _on_erase(_model, it);
-            _on_change(_model);
-            _parent._on_change(_parent._model);
+            _on_erase(*_model, it);
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));
         }
         return iterator(*this, it);
     }
@@ -188,27 +190,27 @@ struct map_impl
     iterator erase(typename type::const_iterator first,
                    typename type::const_iterator last)        
     {
-        auto it = _model.erase(first, last);
-        if (!_parent._under_transaction)
+        auto it = _model->erase(first, last);
+        if (!_parent->_under_transaction)
         {
-            _on_erase(_model, it);
-            _on_change(_model);
-            _parent._on_change(_parent._model);
+            _on_erase(*_model, it);
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));
         }
         return iterator(*this, it);
     }
     
     typename type::size_type erase(const typename type::key_type& key)
     {
-        auto rng = _model.equal_range(key);
-        auto before_size = _model.size();
+        auto rng = _model->equal_range(key);
+        auto before_size = _model->size();
         erase(rng.first, rng.second);
-        auto n = before_size - _model.size();
-        if (n > 0 && !_parent._under_transaction)
+        auto n = before_size - _model->size();
+        if (n > 0 && !_parent->_under_transaction)
         {
-            _on_erase(_model, rng.second);
-            _on_change(_model);
-            _parent._on_change(_parent._model);
+            _on_erase(*_model, rng.second);
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));
         }
         return n;
     }
@@ -216,12 +218,12 @@ struct map_impl
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     {
-        auto ret = _model.emplace(std::forward<Args>(args)...);
-        if (ret.second && !_parent._under_transaction)
+        auto ret = _model->emplace(std::forward<Args>(args)...);
+        if (ret.second && !_parent->_under_transaction)
         {
-            _on_insert(_model, ret.first);
-            _on_change(_model);
-            _parent._on_change(_parent._model);            
+            _on_insert(*_model, ret.first);
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));            
         }
         return std::make_pair(iterator(*this, ret.first), ret.second);
     }
@@ -230,13 +232,13 @@ struct map_impl
     iterator emplace_hint
     (typename type::const_iterator hint, Args&&... args)
     {
-        auto before_size = _model.size();
-        auto it = _model.emplace_hint(hint, std::forward<Args>(args)...);
-        if (_model.size() != before_size && !_parent._under_transaction)
+        auto before_size = _model->size();
+        auto it = _model->emplace_hint(hint, std::forward<Args>(args)...);
+        if (_model->size() != before_size && !_parent->_under_transaction)
         {
-            _on_insert(_model, it);
-            _on_change(_model);
-            _parent._on_change(_parent._model);            
+            _on_insert(*_model, it);
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));            
         }
         return iterator(*this, it);
     }
@@ -244,24 +246,24 @@ struct map_impl
     std::pair<iterator, bool> insert
     (const typename type::value_type& value)
     {
-        auto ret = _model.insert(value);
-        if (ret.second && !_parent._under_transaction)
+        auto ret = _model->insert(value);
+        if (ret.second && !_parent->_under_transaction)
         {
-            _on_insert(_model, ret.first);
-            _on_change(_model);
-            _parent._on_change(_parent._model);            
+            _on_insert(*_model, ret.first);
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));            
         }
         return std::make_pair(iterator(*this, ret.first), ret.second);
     }
     
     std::pair<iterator, bool> insert(typename type::value_type&& value)
     {
-        auto ret = _model.insert(std::move(value));
-        if (ret.second && !_parent._under_transaction)
+        auto ret = _model->insert(std::move(value));
+        if (ret.second && !_parent->_under_transaction)
         {
-            _on_insert(_model, ret.first);
-            _on_change(_model);
-            _parent._on_change(_parent._model);            
+            _on_insert(*_model, ret.first);
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));            
         }
         return std::make_pair(iterator(*this, ret.first), ret.second);
     }
@@ -269,13 +271,13 @@ struct map_impl
     iterator insert(typename type::const_iterator hint,
                     const typename type::value_type& value)
     {
-        auto before_size = _model.size();
-        auto it = _model.insert(hint, value);
-        if (_model.size() != before_size && !_parent._under_transaction)
+        auto before_size = _model->size();
+        auto it = _model->insert(hint, value);
+        if (_model->size() != before_size && !_parent->_under_transaction)
         {
-            _on_insert(_model, it);
-            _on_change(_model);
-            _parent._on_change(_parent._model);            
+            _on_insert(*_model, it);
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));            
         }
         return iterator(*this, it);
     }
@@ -283,13 +285,13 @@ struct map_impl
     template<typename InputIt>
     void insert(InputIt first, InputIt last)
     {
-        auto before_size = _model.size();
-        _model.insert(first, last);
-        if (_model.size() != before_size && !_parent._under_transaction)
+        auto before_size = _model->size();
+        _model->insert(first, last);
+        if (_model->size() != before_size && !_parent->_under_transaction)
         {
-            _on_insert(_model, typename type::const_iterator{}); //TODO
-            _on_change(_model);
-            _parent._on_change(_parent._model);            
+            _on_insert(*_model, typename type::const_iterator{}); //TODO
+            _on_change(*_model);
+            _parent->_on_change(*(_parent->_model));            
         }
     }
     
@@ -298,36 +300,36 @@ struct map_impl
     
     void swap(type& other)
     {
-        _model.swap(other);
+        _model->swap(other);
         //TODO: check?
-        _on_insert(_model, typename type::const_iterator{});
-        _on_erase(_model, typename type::const_iterator{});
-        _on_change(_model);
-        _parent._on_change(_parent._model);            
+        _on_insert(*_model, typename type::const_iterator{});
+        _on_erase(*_model, typename type::const_iterator{});
+        _on_change(*_model);
+        _parent->_on_change(*(_parent->_model));            
     }
 
     typename type::size_type count
     (const typename type::key_type& key) const noexcept
-    { return _model.count(key); }
+    { return _model->count(key); }
     
     iterator find(const typename type::key_type& key)
-    { return iterator(*this, _model.find(key)); }
+    { return iterator(*this, _model->find(key)); }
     
     typename type::const_iterator find
     (const typename type::key_type& key) const
-    { return _model.find(key); }
+    { return _model->find(key); }
     
     std::pair<iterator, iterator> equal_range
     (const typename type::key_type& key)
     {
-        auto p = _model.equal_range(key);
+        auto p = _model->equal_range(key);
         return std::make_pair(iterator(*this, p.first), iterator(*this, p.second));
     }
     
     std::pair<typename type::const_iterator,
               typename type::const_iterator> equal_range
     (const typename type::key_type& key) const
-    { return _model.equal_range(key); }
+    { return _model->equal_range(key); }
     
     template<typename F>
     boost::signals2::connection on_erase(F&& f)
@@ -354,10 +356,10 @@ struct map_impl
     }
     
     const Model& model() const noexcept
-    { return _model; }
+    { return *_model; }
     
-    type& _model;
-    parent_t& _parent;
+    type* _model;
+    parent_t* _parent;
     boost::signals2::signal<
         void(const type&, typename type::const_iterator)> _on_erase;
     boost::signals2::signal<
@@ -365,6 +367,10 @@ struct map_impl
     boost::signals2::signal<
         void(const type&, typename type::const_iterator)> _on_value_change;
     boost::signals2::signal<void(const type&)> _on_change;
+    std::unordered_map<typename type::const_iterator::pointer,
+                       std::weak_ptr<
+                           boost::signals2::signal<void(const typename reference::type&)>>
+                       > _ref2on_change;
 };
     
 }

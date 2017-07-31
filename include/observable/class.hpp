@@ -9,12 +9,14 @@
 #include "observable/class_value.hpp"
 #include "observable/unordered_set.hpp"
 #include "observable/map.hpp"
+#include "observable/member_class.hpp"
 #include <boost/signals2.hpp>
 #include <boost/fusion/include/map.hpp>
 #include <boost/fusion/include/at_key.hpp>
 #include <boost/fusion/include/make_map.hpp>
-#include <boost/fusion/support/pair.hpp>
 #include <boost/fusion/include/pair.hpp>
+#include <boost/fusion/include/for_each.hpp>
+#include <boost/fusion/include/move.hpp>
 #include <type_traits>
 
 namespace observable {
@@ -69,6 +71,50 @@ struct member_traits<
 {
     using type = map_impl<Class, typename Member::type, typename Member::observable_value>;
 };
+        
+template<typename Class, typename Member>
+struct member_traits<
+    Class,
+    Member,
+    typename std::enable_if<
+        std::is_same<
+            typename Member::member_type,
+            memberclass_member_tag
+        >::value
+    >::type
+>
+{
+    using type = memberclass_impl<Class, typename Member::type, typename Member::observable>;
+};
+
+template<typename Class, typename Member>
+struct member_traits<
+    Class,
+    Member,
+    typename std::enable_if<
+        std::is_same<
+            typename Member::member_type,
+            variant_member_tag
+        >::value
+    >::type
+>
+{
+    using type = variant_impl<Class, typename Member::type>;
+};
+    
+template<typename Parent>    
+struct set_parent
+{
+    set_parent(Parent& p) : _parent(p) {}
+    
+    template<typename T>
+    void operator()(T& o) const
+    {
+        o.second._parent = &_parent;
+    }
+    
+    Parent& _parent;
+};
     
 template<typename Model_, typename... Members>
 class class_ 
@@ -83,14 +129,34 @@ public:
     
     class_(Model& model,
            typename Members::type&... args)
-        : _model(model)
+        : _model(&model)
         , tag2member(boost::fusion::pair<
                      typename Members::tag,
                      typename member_traits<class_<Model, Members...>, Members>::type>
                      (typename member_traits<class_<Model, Members...>, Members>::type
                       (*this, args))...)
-    {}
+    {
+    }
 
+    class_(class_&& rhs)
+        : _on_change(std::move(rhs._on_change))
+        , _under_transaction(rhs._under_transaction)
+        , _model(rhs._model)
+        , tag2member(std::move(rhs.tag2member))
+    {
+        for_each(tag2member, set_parent<class_<Model_, Members...>>{*this});
+    }
+    
+    class_& operator=(class_&& rhs)
+    {
+        _on_change = std::move(rhs._on_change);
+        _under_transaction = rhs._under_transaction;
+        _model = rhs._model;
+        boost::fusion::move(std::move(rhs.tag2member), tag2member);
+        for_each(tag2member, set_parent<class_<Model_, Members...>>{*this});
+        return *this;
+    }
+    
     template<typename M, typename V>
     void set(V o)
     {
@@ -122,17 +188,19 @@ public:
     }
     
     const Model& model() const noexcept
-    { return _model; }
+    { return *_model; }
     
 private:    
     boost::signals2::signal<void(const Model&)> _on_change;
     bool _under_transaction{false};
-    Model& _model;
+    Model* _model;
     Tag2Member tag2member;
     template <typename> friend class observable::scoped_on_change_t;
-    template <typename,typename> friend struct observable::value_impl;
+    template <typename,typename, typename> friend struct observable::value_impl;
     template <typename,typename> friend struct observable::unordered_set_impl;
-    template <typename,typename> friend struct observable::map_impl;
+    template <typename,typename, typename> friend struct observable::map_impl;
+    template <typename,typename, typename> friend struct observable::memberclass_impl;
+    template <typename,typename, typename> friend struct observable::variant_impl;
 };
 
 }

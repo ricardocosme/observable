@@ -30,29 +30,52 @@ struct value_impl<Class, ValueType, void>
 {
     using type = ValueType;
     using parent_t = Class;
+
+    //TODO
+    value_impl() = default;
+    
     value_impl(parent_t& parent, type& value)
-        : _value(value)
-        , _parent(parent)
-    {}
+        : _value(&value)
+        , _parent(&parent)
+    {
+    }
+
+    //?
+    value_impl(const value_impl& rhs)
+        : _value(rhs._value)
+        , _parent(rhs._parent)
+    {
+        _on_change.connect(rhs._on_change);
+    }
+
+    //?
+    value_impl& operator=(const value_impl& rhs)
+    {
+        _value = rhs._value;
+        _parent = rhs._parent;
+        _on_change.connect(rhs._on_change);
+        return *this;
+    }
+    
     void set(type o)
     {
-        _value = std::move(o);
-        if (!_parent._under_transaction)
+        *_value = std::move(o);
+        if (!_parent->_under_transaction)
         {
-            _on_change(_value);
-            _parent._on_change(_parent._model);
+            _on_change(*_value);
+            _parent->_on_change(*(_parent->_model));
         }
     }
     const type& get() const noexcept
-    { return _value; }
+    { return *_value; }
     template<typename F>
     void apply(F&& f)
     {
-        f(_value);
-        if (!_parent._under_transaction)
+        f(*_value);
+        if (!_parent->_under_transaction)
         {
-            _on_change(_value);
-            _parent._on_change(_parent._model);
+            _on_change(*_value);
+            _parent->_on_change(*(_parent->_model));
         }        
     }
     template<typename F>
@@ -60,8 +83,8 @@ struct value_impl<Class, ValueType, void>
     {
         return _on_change.connect(std::forward<F>(f));
     }
-    type& _value;
-    parent_t& _parent;
+    type* _value;
+    parent_t* _parent;
     boost::signals2::signal<void(const type&)> _on_change;
 };
     
@@ -72,32 +95,48 @@ struct value_impl<Class, ValueType, container_tag>
     using parent_t = Class;
     value_impl(parent_t& parent, type& value,
                typename Class::type::const_iterator it)
-        : _value(value)
-        , _parent(parent)
-        , _on_change(std::make_shared<boost::signals2::signal<void(const type&)>>())
+        : _value(&value)
+        , _parent(&parent)
         , _it(it)
-    {}
+    {
+        auto on_change = _parent->_ref2on_change[&*it].lock();
+        if (!on_change)
+        {
+            auto& ref2on_change = _parent->_ref2on_change;
+            auto it_ptr = &*it;
+            on_change = std::shared_ptr<boost::signals2::signal<void(const type&)>>
+                (new boost::signals2::signal<void(const type&)>(),
+                 [&ref2on_change, it_ptr](boost::signals2::signal<void(const type&)> *p)
+                 {
+                     ref2on_change.erase(it_ptr);
+                     delete p;
+                 });
+            ref2on_change[&*it] = on_change;
+        }
+        _on_change = on_change;
+            
+    }
     
     void set(type o)
     {
-        _value = std::move(o);
-        if (!_parent._parent._under_transaction)
+        *_value = std::move(o);
+        if (!_parent->_parent->_under_transaction)
         {
-            (*_on_change)(_value);
-            _parent._on_value_change(_parent._model, _it);
+            (*_on_change)(*_value);
+            _parent->_on_value_change(*(_parent->_model), _it);
         }
     }
     
     const type& get() const noexcept
-    { return _value; }
+    { return *_value; }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
     {
         return _on_change->connect(std::forward<F>(f));
     }
-    type& _value;
-    parent_t& _parent;
+    type* _value;
+    parent_t* _parent;
     std::shared_ptr<boost::signals2::signal<void(const type&)>> _on_change;
     typename Class::type::const_iterator _it;
 };
