@@ -10,6 +10,7 @@
 #include "observable/unordered_set.hpp"
 #include "observable/map.hpp"
 #include "observable/member_class.hpp"
+#include "observable/vector.hpp"
 #include <boost/signals2.hpp>
 #include <boost/fusion/include/map.hpp>
 #include <boost/fusion/include/at_key.hpp>
@@ -116,6 +117,21 @@ struct set_parent
     Parent& _parent;
 };
     
+template<typename Class, typename Member>
+struct member_traits<
+    Class,
+    Member,
+    typename std::enable_if<
+        std::is_same<
+            typename Member::member_type,
+            vector_member_tag
+        >::value
+    >::type
+>
+{
+    using type = vector_impl<Class, typename Member::type>;
+};
+    
 template<typename Model_, typename... Members>
 class class_ 
 {    
@@ -201,6 +217,7 @@ private:
     template <typename,typename, typename> friend struct observable::map_impl;
     template <typename,typename, typename> friend struct observable::memberclass_impl;
     template <typename,typename, typename> friend struct observable::variant_impl;
+    template <typename,typename> friend struct observable::vector_impl;
 };
 
 }

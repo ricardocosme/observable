@@ -23,6 +23,7 @@ exe unordered_set : test/unordered_set.cpp ;
 exe map : test/map.cpp ;
 exe variant             : test/variant.cpp ;
 exe class_             : test/class.cpp ;
+exe vector : test/vector.cpp ;
 
 install stage
   : simple
@@ -33,5 +34,6 @@ install stage
     map
     variant
     class_
+    vector
   ;
   

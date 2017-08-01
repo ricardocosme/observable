@@ -78,7 +78,6 @@ int main()
         foo.map.emplace(2, "abc");
         try
         {
-            bool called{false};
             const auto& co = obs.get<map>();
             auto v = co.at(2);
             assert(v == "abc");
@@ -391,4 +390,20 @@ int main()
         assert(obs.get<map>().equal_range(2).first != obs.get<map>().end());
         assert(obs.get<map>().equal_range(4).first == obs.get<map>().end());
     }
+
+    //crbegin/rbegin/crend/rend
+    {
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
+        foo.map.emplace(4, "ghi");
+        foo.map.emplace(5, "jkl");
+        auto& omap = obs.get<map>();
+        assert(omap.crbegin()->first == 5);
+        assert(omap.rbegin()->first == 5);
+        assert(std::prev(omap.crend())->first == 2);
+        auto it = omap.rend();
+        assert((--it)->first == 2);
+    }
+    
 }
