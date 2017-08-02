@@ -39,25 +39,22 @@ struct value_impl<Class, ValueType, void>
     {
     }
 
-    // //?
-    // value_impl(const value_impl& rhs)
-    //     : _value(rhs._value)
-    //     , _parent(rhs._parent)
-    // {
-    //     _on_change.connect(rhs._on_change);
-    // }
+    //noexcept to variant assignment?
+    value_impl(value_impl&& rhs) noexcept
+        : _value(rhs._value)
+        , _parent(rhs._parent)
+        , _on_change(std::move(rhs._on_change))
+    {
+    }
 
-    // //?
-    // value_impl& operator=(const value_impl& rhs)
-    // {
-    //     _value = rhs._value;
-    //     _parent = rhs._parent;
-    //     _on_change.connect(rhs._on_change);
-    //     return *this;
-    // }
-
-    // value_impl(value_impl&&) = default;
-    // value_impl& operator=(value_impl&&) = default;
+    //noexcept to variant assignment?
+    value_impl& operator=(value_impl&& rhs) noexcept
+    {
+        _value = rhs._value;
+        _parent = rhs._parent;
+        _on_change = std::move(rhs._on_change);
+        return *this;
+    }
     
     void set(Model o)
     {

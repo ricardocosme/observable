@@ -16,17 +16,17 @@ project demos
     <use>/boost//headers
   ;
 
+exe hide_model : demo/hide_model.cpp ;
+exe scoped : demo/scoped.cpp ;
 exe simple : demo/simple.cpp ;
 exe specific : demo/specific.cpp ;
-exe scoped : demo/scoped.cpp ;
-exe hide_model : demo/hide_model.cpp ;
-# exe variant             : test/variant.cpp ;
 
-run test/unordered_set.cpp ;
-run test/map.cpp ;
-run test/vector.cpp ;
 run test/class.cpp ;
+run test/map.cpp ;
 run test/member_class_l3.cpp ;
+run test/unordered_set.cpp ;
+run test/variant.cpp ;
+run test/vector.cpp ;
 run test/vector_of_class.cpp ;
 
 install stage

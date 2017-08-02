@@ -166,8 +166,10 @@ struct class_impl<Class, Model_, ObservableClass, container_tag>
     
     ObservableClass _observable_class;
     parent_t* _parent{nullptr};
+    
     boost::signals2::scoped_connection _parent_on_change_conn,
         _parent_on_value_change_conn;
+    
     typename Class::Model::const_iterator _it;
 };
         

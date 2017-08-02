@@ -7,14 +7,10 @@
 #include <boost/mpl/at.hpp>
 
 using variant_t = boost::variant<int, std::string>;
-
 struct foo_t
-{
-    variant_t variant;
-};
+{ variant_t variant; };
 
 struct variant{};
-
 using obs_t = observable::class_<
     foo_t,
     observable::member::variant<variant_t, variant>
@@ -63,7 +59,6 @@ struct visitor_on_change_t
 int main()
 {
     foo_t foo;
-    // obs_t obs(foo, foo.map);
     obs_t obs(foo, foo.variant);
 
     auto& ovariant = obs.get<variant>();
@@ -71,6 +66,8 @@ int main()
     using OVariant = std::decay<decltype(ovariant)>::type;
     
     ovariant.set("hi");
+
+    obs.on_change([](const foo_t&){std::cout << "obs has changed" << std::endl;});
     
     ovariant.apply_visitor(visitor_on_change_t<OVariant>{});
     ovariant.apply_visitor(visitor_t<OVariant>{});

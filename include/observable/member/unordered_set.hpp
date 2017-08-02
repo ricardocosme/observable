@@ -32,27 +32,7 @@ struct unordered_set_impl
         : _model(&value)
         , _parent(&parent)
     {}
-    // void set(type o)
-    // {
-    //     *_model = std::move(o);
-    //     if (!_parent->_under_transaction)
-    //     {
-    //         _on_change(*_model);
-    //         _parent->_on_change(*(_parent->_model));
-    //     }
-    // }
-    // const type& get() const noexcept
-    // { return *_model; }
-    // template<typename F>
-    // void apply(F&& f)
-    // {
-    //     f(*_model);
-    //     if (!_parent->_under_transaction)
-    //     {
-    //         _on_change(*_model);
-    //         _parent->_on_change(*(_parent->_model));
-    //     }        
-    // }
+    
     typename Model::iterator begin() noexcept
     { return _model->begin(); }
 
@@ -258,30 +238,24 @@ struct unordered_set_impl
     
     template<typename F>
     boost::signals2::connection on_erase(F&& f)
-    {
-        return _on_erase.connect(std::forward<F>(f));
-    }
+    { return _on_erase.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_insert(F&& f)
-    {
-        return _on_insert.connect(std::forward<F>(f));
-    }
+    { return _on_insert.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
-    {
-        return _on_change.connect(std::forward<F>(f));
-    }
+    { return _on_change.connect(std::forward<F>(f)); }
     
     const Model& model() const noexcept
     { return *_model; }
     
     Model* _model;
     parent_t* _parent;
-    boost::signals2::signal<void(const Model&)> _on_erase;
-    boost::signals2::signal<void(const Model&)> _on_insert;
-    boost::signals2::signal<void(const Model&)> _on_change;
+    
+    boost::signals2::signal<void(const Model&)> _on_erase, _on_insert,
+        _on_change;
 };
     
-    }}
+}}

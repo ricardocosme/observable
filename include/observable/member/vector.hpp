@@ -374,27 +374,19 @@ struct vector_impl
     
     template<typename F>
     boost::signals2::connection on_erase(F&& f)
-    {
-        return _on_erase.connect(std::forward<F>(f));
-    }
+    { return _on_erase.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_insert(F&& f)
-    {
-        return _on_insert.connect(std::forward<F>(f));
-    }
+    { return _on_insert.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
-    {
-        return _on_change.connect(std::forward<F>(f));
-    }
+    { return _on_change.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_value_change(F&& f)
-    {
-        return _on_value_change.connect(std::forward<F>(f));
-    }
+    { return _on_value_change.connect(std::forward<F>(f)); }
     
     const Model& model() const noexcept
     { return *_model; }
@@ -402,12 +394,9 @@ struct vector_impl
     Model* _model;
     parent_t* _parent;
     
-    boost::signals2::signal<
-        void(const Model&, typename Model::const_iterator)> _on_erase;
-    boost::signals2::signal<
-        void(const Model&, typename Model::const_iterator)> _on_insert;
-    boost::signals2::signal<
-        void(const Model&, typename Model::const_iterator)> _on_value_change;
+    boost::signals2::signal<void(const Model&, typename Model::const_iterator)>
+    _on_erase, _on_insert, _on_value_change;
+    
     boost::signals2::signal<void(const Model&)> _on_change;
     
     std::unordered_map<typename Model::const_iterator::pointer,
