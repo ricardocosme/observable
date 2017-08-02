@@ -1,4 +1,5 @@
 import os ;
+import testing ;
 
 local boost_root_path = [ os.environ BOOST_ROOT ] ;
 if ! $(boost_root_path)
@@ -19,21 +20,19 @@ exe simple : demo/simple.cpp ;
 exe specific : demo/specific.cpp ;
 exe scoped : demo/scoped.cpp ;
 exe hide_model : demo/hide_model.cpp ;
-exe unordered_set : test/unordered_set.cpp ;
-exe map : test/map.cpp ;
-exe variant             : test/variant.cpp ;
-exe class_             : test/class.cpp ;
-exe vector : test/vector.cpp ;
+# exe variant             : test/variant.cpp ;
+
+run test/unordered_set.cpp ;
+run test/map.cpp ;
+run test/vector.cpp ;
+run test/class.cpp ;
+run test/member_class_l3.cpp ;
+run test/vector_of_class.cpp ;
 
 install stage
   : simple
     specific
     scoped
     hide_model
-    unordered_set
-    map
-    variant
-    class_
-    vector
   ;
   

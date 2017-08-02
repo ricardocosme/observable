@@ -16,26 +16,26 @@
 #include <boost/mpl/iter_fold.hpp>
 #include <boost/mpl/fold.hpp>
 
-namespace observable {
+namespace observable { namespace member {
 
-struct variant_member_tag {};
+struct variant_tag {};
     
-template<typename T, typename Tag>
+template<typename Model_, typename Tag>
 struct variant
 {
+    using model = Model_;
     using tag = Tag;
-    using type = T;
-    using member_type = variant_member_tag;
+    using member_type = variant_tag;
 };
         
-template<typename Parent, typename T>    
+template<typename Parent, typename Model>    
 struct observable_of
 {
-    using type = observable::value_impl<Parent, T>;
+    using type = observable::member::value_impl<Parent, Model>;
 };
 
-template<typename Parent, typename T>
-using observable_of_t = typename observable_of<Parent, T>::type;
+template<typename Parent, typename Model>
+using observable_of_t = typename observable_of<Parent, Model>::type;
     
 template<typename ObservableVariant, typename Parent>
 struct set_variant_t
@@ -58,13 +58,13 @@ struct set_variant_t
     Parent& _parent;
 };
     
-template<typename Class, typename Model, typename Enable = void>
+template<typename Class, typename Model_, typename Enable = void>
 struct variant_impl;
     
-template<typename Class, typename Model>
-struct variant_impl<Class, Model, void>
+template<typename Class, typename Model_>
+struct variant_impl<Class, Model_, void>
 {
-    using type = Model;
+    using Model = Model_;
     using parent_t = Class;
     using types = typename Model::types;
     using Parent = variant_impl<Class, Model>;
@@ -82,18 +82,12 @@ struct variant_impl<Class, Model, void>
         boost::mpl::insert<boost::mpl::_1,
                            boost::mpl::pair<boost::mpl::_1, boost::mpl::_2>>>::type;
         
-    variant_impl(parent_t& parent, type& value)
+    variant_impl(parent_t& parent, Model& value)
         : _model(&value)
         , _parent(&parent)
     {}
     
-    // template<typename T>
-    // static constexpr T observable_of()
-    // {
-    //     return ::observable::observable_of<Parent, T>::type;
-    // }
-    
-    void set(type o)
+    void set(Model o)
     {
         *_model = std::move(o);
         if (!_parent->_under_transaction)
@@ -102,7 +96,7 @@ struct variant_impl<Class, Model, void>
             _parent->_on_change(*(_parent->_model));
         }
     }
-    const type& get() const noexcept
+    const Model& get() const noexcept
     { return *_model; }
     
     template<typename Visitor>
@@ -118,10 +112,11 @@ struct variant_impl<Class, Model, void>
     {
         return _on_change.connect(std::forward<F>(f));
     }
-    type* _model;
+    
+    Model* _model;
     parent_t* _parent;
     observable_variant_t _ovariant;
-    boost::signals2::signal<void(const type&)> _on_change;
+    boost::signals2::signal<void(const Model&)> _on_change;
     bool _under_transaction{false};
 };
     
@@ -168,4 +163,4 @@ struct variant_impl<Class, Model, void>
 //     typename Class::type::const_iterator _it;
 // };
     
-}
+    }}

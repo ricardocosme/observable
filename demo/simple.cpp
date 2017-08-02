@@ -22,7 +22,7 @@ int main()
     
     person.get<kids>().emplace("josefina");
     auto o = person.get<skills>().at(8);
-    o.set("Woodworking");
+    o->set("Woodworking");
 
     for(auto p : model.skills)
         std::cout << p.second << std::endl;

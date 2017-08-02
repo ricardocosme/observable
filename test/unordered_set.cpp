@@ -1,5 +1,4 @@
 #include "observable/class.hpp"
-#include "observable/unordered_set.hpp"
 
 #include <array>
 #include <iostream>
@@ -17,7 +16,7 @@ struct set{};
 
 using obs_t = observable::class_<
     foo_t,
-    observable::unordered_set<set_t, set>
+    observable::member::unordered_set<set_t, set>
     >;
 
 int main()

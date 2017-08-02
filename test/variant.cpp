@@ -1,5 +1,4 @@
 #include "observable/class.hpp"
-#include "observable/map.hpp"
 
 #include <array>
 #include <iostream>
@@ -18,7 +17,7 @@ struct variant{};
 
 using obs_t = observable::class_<
     foo_t,
-    observable::variant<variant_t, variant>
+    observable::member::variant<variant_t, variant>
     >;
 
 template<typename OVariant>
@@ -27,12 +26,12 @@ struct visitor_t
     using result_type = void;
     
     result_type operator()
-    (observable::observable_of_t<OVariant, int>& o) const
+    (observable::member::observable_of_t<OVariant, int>& o) const
     {
         o.set(10);
     }
     result_type operator()
-    (observable::observable_of_t<OVariant, std::string>& o) const
+    (observable::member::observable_of_t<OVariant, std::string>& o) const
     {
         o.set("hello");
     }
@@ -44,7 +43,7 @@ struct visitor_on_change_t
     using result_type = void;
     
     result_type operator()
-    (observable::observable_of_t<OVariant, int>& o) const
+    (observable::member::observable_of_t<OVariant, int>& o) const
     {
         o.on_change(
             [](const int& o){ std::cout << "has changed to "
@@ -52,7 +51,7 @@ struct visitor_on_change_t
                                         << std::endl; });
     }
     result_type operator()
-    (observable::observable_of_t<OVariant, std::string>& o) const
+    (observable::member::observable_of_t<OVariant, std::string>& o) const
     {
         o.on_change(
             [](const std::string& o){ std::cout << "has changed to "

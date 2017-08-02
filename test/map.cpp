@@ -1,5 +1,4 @@
 #include "observable/class.hpp"
-#include "observable/map.hpp"
 
 #include <array>
 #include <iostream>
@@ -17,7 +16,7 @@ struct map{};
 
 using obs_t = observable::class_<
     foo_t,
-    observable::map<map_t, observable::value, map>
+    observable::member::map<map_t, observable::member::value, map>
     >;
 
 int main()
@@ -46,11 +45,11 @@ int main()
         {
             bool called{false};
             auto ob = obs.get<map>().at(2);
-            assert(ob.get() == "abc");
-            ob.on_change([&called](const std::string&)
+            assert(ob->get() == "abc");
+            ob->on_change([&called](const std::string&)
                           { called = true; });
-            ob.set("def");
-            assert(ob.get() == "def");
+            ob->set("def");
+            assert(ob->get() == "def");
             assert(called);
         }
         catch(const std::out_of_range&)
@@ -92,11 +91,11 @@ int main()
         bool called{false};
         map_t::key_type k = 0;
         auto ob = obs.get<map>()[k];
-        assert(ob.get() == map_t::mapped_type{});
-        ob.on_change([&called](const std::string&)
+        assert(ob->get() == map_t::mapped_type{});
+        ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob.set("def");
-        assert(ob.get() == "def");
+        ob->set("def");
+        assert(ob->get() == "def");
         assert(called);
     }
 
@@ -106,19 +105,19 @@ int main()
         foo.map.emplace(2, "abc");
         map_t::key_type k = 2;
         auto ob = obs.get<map>()[k];
-        assert(ob.get() == "abc");
+        assert(ob->get() == "abc");
         bool called{false};
-        ob.on_change([&called](const std::string&)
+        ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob.set("def");
-        assert(ob.get() == "def");
+        ob->set("def");
+        assert(ob->get() == "def");
         assert(called);
     }
     
     //operator[] rvalue insert
     {
         auto ob = obs.get<map>()[1];
-        assert(ob.get() == map_t::mapped_type{});
+        assert(ob->get() == map_t::mapped_type{});
     }
 
     //operator[] rvalue lookup
@@ -126,12 +125,12 @@ int main()
         foo.map.clear();
         foo.map.emplace(2, "abc");
         auto ob = obs.get<map>()[2];
-        assert(ob.get() == "abc");
+        assert(ob->get() == "abc");
         bool called{false};
-        ob.on_change([&called](const std::string&)
+        ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob.set("def");
-        assert(ob.get() == "def");
+        ob->set("def");
+        assert(ob->get() == "def");
         assert(called);
     }
 
@@ -140,12 +139,12 @@ int main()
         foo.map.clear();
         foo.map.emplace(2, "abc");
         auto ob = obs.get<map>().begin()->second;
-        assert(ob.get() == "abc");
+        assert(ob->get() == "abc");
         bool called{false};
-        ob.on_change([&called](const std::string&)
+        ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob.set("def");
-        assert(ob.get() == "def");
+        ob->set("def");
+        assert(ob->get() == "def");
         assert(called);
     }
 
@@ -372,13 +371,13 @@ int main()
         assert(it != obs.get<map>().end());
         auto ob = *it;
         bool called{false};
-        ob.second.on_change([&called](const std::string&)
+        ob.second->on_change([&called](const std::string&)
                             { called = true; });
         auto it2 = obs.get<map>().find(2);
         assert(it2 != obs.get<map>().end());
         auto ob2 = *it2;
-        ob2.second.set("def");
-        assert(ob.second.get() == "def");
+        ob2.second->set("def");
+        assert(ob.second->get() == "def");
         assert(called);        
     }
     

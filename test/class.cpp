@@ -12,7 +12,7 @@ struct d{};
 
 using obs_t = observable::class_<
     foo_t,
-    observable::value<double, d>
+    observable::member::value<double, d>
     >;
 
 int main()
