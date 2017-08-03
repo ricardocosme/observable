@@ -18,6 +18,7 @@
 #include <boost/fusion/include/pair.hpp>
 #include <boost/fusion/include/for_each.hpp>
 #include <boost/fusion/include/move.hpp>
+#include <boost/fusion/sequence/intrinsic/at_key.hpp>
 #include <type_traits>
 
 namespace observable {
@@ -205,6 +206,17 @@ public:
     
     const Model& model() const noexcept
     { return *_model; }
+
+    template<typename Tag>
+    struct observable_of_impl
+    {
+        using type = typename std::decay<
+            typename boost::fusion::result_of::at_key<
+                Tag2Member, Tag>::type>::type;
+    };
+
+    template<typename Tag>
+    using observable_of = typename observable_of_impl<Tag>::type;
     
 private:
     

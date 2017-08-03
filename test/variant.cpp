@@ -16,44 +16,46 @@ using obs_t = observable::class_<
     observable::member::variant<variant_t, variant>
     >;
 
-template<typename OVariant>
+using OVariant = obs_t::observable_of<variant>;
+using OInt = OVariant::observable_of<int>;
+using OString = OVariant::observable_of<std::string>;
+
 struct visitor_t
 {
     using result_type = void;
     
-    result_type operator()
-    (observable::member::observable_of_t<OVariant, int>& o) const
+    result_type operator()(OInt& o) const
     {
         o.set(10);
     }
-    result_type operator()
-    (observable::member::observable_of_t<OVariant, std::string>& o) const
+    result_type operator()(OString& o) const
     {
         o.set("hello");
     }
 };
 
-template<typename OVariant>
 struct visitor_on_change_t
 {
     using result_type = void;
+
+    visitor_on_change_t(bool& str_called, bool& num_called)
+        : _str_called(str_called)
+        , _num_called(num_called)
+    {}
     
-    result_type operator()
-    (observable::member::observable_of_t<OVariant, int>& o) const
+    result_type operator()(OInt& o) const
     {
-        o.on_change(
-            [](const int& o){ std::cout << "has changed to "
-                                        << o 
-                                        << std::endl; });
+        auto& num_called = _num_called;
+        o.on_change([&num_called](int){ num_called = true; });
     }
-    result_type operator()
-    (observable::member::observable_of_t<OVariant, std::string>& o) const
+    result_type operator()(OString& o) const
     {
-        o.on_change(
-            [](const std::string& o){ std::cout << "has changed to "
-                                                << o
-                                                << std::endl; });
+        auto& str_called = _str_called;
+        o.on_change([&str_called](const std::string& o){ str_called = true; });
     }
+    
+    bool& _str_called;
+    bool& _num_called;
 };
 
 int main()
@@ -63,23 +65,27 @@ int main()
 
     auto& ovariant = obs.get<variant>();
     
-    using OVariant = std::decay<decltype(ovariant)>::type;
+    bool obs_on_change{false};
+    obs.on_change([&obs_on_change](const foo_t&)
+                  { obs_on_change = true;});
     
     ovariant.set("hi");
-
-    obs.on_change([](const foo_t&){std::cout << "obs has changed" << std::endl;});
+    assert(obs_on_change);
+    obs_on_change = false;
     
-    ovariant.apply_visitor(visitor_on_change_t<OVariant>{});
-    ovariant.apply_visitor(visitor_t<OVariant>{});
-
-    // //apply_visitor
-    // {
-    //     bool called{false};
-    //     auto& omap = obs.get<map>();
-    //     omap.emplace(1, "abc");
-    //     omap.emplace(2, 100);
-    //     auto visitor = visitor_t{called};
-    //     omap.at(1).apply_visitor(visitor);
-    //     assert(called);
-    // }
+    bool str_on_change{false};
+    bool num_on_change{false};
+    ovariant.apply_visitor(visitor_on_change_t
+                           {str_on_change, num_on_change});
+    ovariant.apply_visitor(visitor_t{});
+    assert(str_on_change);
+    
+    ovariant.set(3);    
+    assert(obs_on_change);
+    obs_on_change = false;
+    
+    ovariant.apply_visitor(visitor_on_change_t
+                           {str_on_change, num_on_change});
+    ovariant.apply_visitor(visitor_t{});
+    assert(num_on_change);
 }
