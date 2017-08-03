@@ -2,6 +2,18 @@
 #include "person.hpp"
 #include <iostream>
 
+struct operson_t : observable_person
+{
+    using base = observable_person;
+    
+    operson_t(person_t model)
+        : base(::observable::factory(_model))
+        , _model(std::move(model))
+    {}
+private:
+    person_t _model;
+};
+
 int main()
 {
     operson_t person{person_t{"maria", 26}};

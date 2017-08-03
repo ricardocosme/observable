@@ -1,3 +1,9 @@
+
+// Copyright Ricardo Calheiros de Miranda Cosme 2017.
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE or copy at
+//  http://www.boost.org/LICENSE_1_0.txt)
+
 #pragma once
 
 #include <cstddef>
@@ -11,6 +17,9 @@ using skills_t = std::map<
 >;
 
 using kids_t = std::unordered_set<std::string>;
+
+/// This class models a person without any support to a notification
+/// system like signal/slot.
 
 struct person_t
 {

@@ -25,13 +25,10 @@ struct visitor_t
     using result_type = void;
     
     result_type operator()(OInt& o) const
-    {
-        o.set(10);
-    }
+    { o.set(10); }
+    
     result_type operator()(OString& o) const
-    {
-        o.set("hello");
-    }
+    { o.set("hello"); }
 };
 
 struct visitor_on_change_t
@@ -69,7 +66,7 @@ int main()
     obs.on_change([&obs_on_change](const foo_t&)
                   { obs_on_change = true;});
     
-    ovariant.set("hi");
+    ovariant = "hi";
     assert(obs_on_change);
     obs_on_change = false;
     
@@ -80,7 +77,7 @@ int main()
     ovariant.apply_visitor(visitor_t{});
     assert(str_on_change);
     
-    ovariant.set(3);    
+    ovariant = 3;    
     assert(obs_on_change);
     obs_on_change = false;
     

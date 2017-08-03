@@ -90,6 +90,13 @@ struct variant_impl<Class, Model_, void>
         : _model(&value)
         , _parent(&parent)
     {}
+
+    template<typename T>
+    variant_impl& operator=(T&& o)
+    {
+        set(std::forward<T>(o));
+        return *this;
+    }
     
     void set(Model o)
     {

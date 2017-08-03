@@ -20,13 +20,14 @@ namespace observable { namespace member {
 
 struct map_tag {};
     
-template<typename Model, template <typename, typename> class ObservableValue, typename Tag>
+template<typename Model, typename Tag,
+         typename ObservableValueType = value<Model, Tag>>
 struct map
 {
     using member_type = map_tag;
     using model = Model;
     using tag = Tag;
-    using observable_value = ObservableValue<model, tag>;
+    using observable_value_type = ObservableValueType;
 };
 
 template<typename Model>    
@@ -72,42 +73,52 @@ private:
     Model& _model;    
 };
 
-template<typename Map, typename ObservableValue, typename Enable = void>
-struct value_traits;
-    
-template<typename Map, typename ObservableValue>
-struct value_traits<Map, ObservableValue,
-                    typename std::enable_if<
-                        std::is_same<
-                            typename ObservableValue::member_type,
-                            member::value_tag
-                            >::value
-                        >::type>
+template<typename MapImpl, typename ObservableValueType, typename Enable = void>
+struct observable_mapped_type_impl;
+        
+template<typename MapImpl, typename ObservableValueType>
+struct observable_mapped_type_impl<
+    MapImpl,
+    ObservableValueType,
+    typename std::enable_if<
+        std::is_same<
+            typename ObservableValueType::member_type,
+            value_tag
+        >::value
+    >::type
+>    
 {
-    using type = member::value_impl<Map, typename Map::Model::mapped_type, container_tag>;
+    using type = value_impl<MapImpl,
+                            typename MapImpl::Model::mapped_type,
+                            container_tag>;
 };
-    
-template<typename Map, typename ObservableValue>
-struct value_traits<Map, ObservableValue,
-                    typename std::enable_if<
-                        std::is_same<
-                            typename ObservableValue::member_type,
-                            member::variant_tag
-                            >::value
-                        >::type>
-{
-    using type = variant_impl<Map, typename Map::Model::mapped_type, container_tag>;
+        
+template<typename MapImpl, typename ObservableValueType>
+struct observable_mapped_type_impl<
+    MapImpl,
+    ObservableValueType,
+    typename std::enable_if<
+        !std::is_same<
+            typename ObservableValueType::Tag2Member,
+            void
+        >::value
+    >::type
+>
+{    
+    using type = variant_impl<MapImpl,
+                              typename ObservableValueType::Model::mapped_type,
+                              container_tag>;
 };
-    
-template<typename Class, typename Model_, typename ObservableValue>
+            
+template<typename Class, typename Model_, typename ObservableValueType>
 struct map_impl
 {
     using Model = Model_;
     using parent_t = Class;
-    using reference = typename value_traits<
-        map_impl<Class, Model, ObservableValue>,
-        ObservableValue>::type;
-    using iterator = map_iterator<map_impl<Class, Model, ObservableValue>>;
+    using reference = typename observable_mapped_type_impl<
+        map_impl<Class, Model, ObservableValueType>,
+        ObservableValueType>::type;
+    using iterator = map_iterator<map_impl<Class, Model, ObservableValueType>>;
     using difference_type = typename Model::difference_type;
 
     map_impl() = default;
@@ -400,7 +411,7 @@ private:
         }
         return observable;
     }
-    friend class map_iterator<map_impl<Class, Model, ObservableValue>>;
+    friend class map_iterator<map_impl<Class, Model, ObservableValueType>>;
 };
     
 }}

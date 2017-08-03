@@ -73,7 +73,7 @@ struct observable_impl<
 {
     using type = member::map_impl<Class,
                           typename Member::model,
-                          typename Member::observable_value>;
+                          typename Member::observable_value_type>;
 };
         
 template<typename Class, typename Member>
