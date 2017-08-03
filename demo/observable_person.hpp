@@ -44,6 +44,14 @@ using observable_person = observable::class_<
     person_t, //The model's type
     observable::member::value<std::string, name>,
     observable::member::value<std::size_t, age>,
+    
+    /// Observable of containers don't store anything. It's only a
+    /// proxy that behaves like a container to manipulate the
+    /// container(model) with support to notifications. When an
+    /// element is fetched through the observable, an observable of
+    /// the element is returned. Note: The ownership of the observable
+    /// of the element is shared. The container observable only
+    /// store a weak pointer.
     observable::member::map<skills_t, skills>,
     observable::member::unordered_set<kids_t, kids>
     >;
