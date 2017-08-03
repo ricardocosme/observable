@@ -20,41 +20,45 @@ int main()
 
     /// Register a closure to react to any change of person
     operson.on_change(
-        [](const person_t& p){std::cout << "person " << p.name
-                                        << " has changed" << std::endl;});
+        [](const person_t& p)
+        {std::cout << "person " << p.name
+                   << " has changed" << std::endl;});
 
-    /// Change the person's name. This action may emit the following
-    /// signals: operson.on_change and operson.name.on_change
+    /// Register a closure to react to change of person's name
+    operson.on_change<name>(
+        [](const std::string& name)
+        {std::cout << "person's name has changed to "
+                   << name << std::endl;});
+    
+    /// Change the person's name. This action emits the following signals:
+    /// operson.on_change and operson.name.on_change
     operson.set<name>("MARIA");
-    
-    /// Change the person's age. This action may emit the following
-    /// signals: operson.on_change and operson.age.on_change
-    operson.set<age>(27);
 
-    /// Get the observable of operson.skills, which is an
-    /// observable::map, and insert a new element to the
-    /// container. This action may emit the following signals:
-    /// operson.on_change, operson.skills.on_change and
-    /// operson.skills.on_insert.
-    operson.get<skills>().emplace(8, "woodworking");
-    operson.get<skills>().emplace(7, "cooking");
+    /// Get the observable of person.skills, which is an
+    /// observable::map
+    auto& oskills = operson.get<skills>();
     
-    /// Get the observable of operson.kids, which is an
-    /// observable::unordered_set, and insert a new element to the
-    /// container. This action may emit the following signals:
-    /// operson.on_change, operson.kids.on_change and
-    /// operson.kids.on_insert.
-    operson.get<kids>().emplace("josefina");
-
+    /// Register a closure to react to new skills
+    oskills.on_insert(
+        [](const skills_t&, skills_t::const_iterator it)
+        {std::cout << "new skill was added: "
+                   << it->second << " with level "
+                   << it->first << std::endl;});
+    
+    /// Add a new skill. This action emits the following signals:
+    /// operson.skills.on_insert and operson.on_change
+    oskills.emplace(8, "woodworking");
+    
+    /// Register a closure to react to changes of a skill
+    oskills.on_value_change(
+        [](const skills_t&, skills_t::const_iterator it)
+        {std::cout << "skill has changed to "
+                   << it->second << " with level "
+                   << it->first << std::endl;});
+    
     /// Get the observable of an specific container's element and
-    /// change the value. This action may emit the following signals:
-    /// operson.on_change, operson.skills.on_change, 
-    /// operson.skills.on_value_change and the element's on_change.
-    auto o = operson.get<skills>().at(8);
+    /// change the value. This action emits the following signals:
+    /// operson.skills.on_value_change and operson.on_change
+    auto o = oskills.at(8);
     o->set("Woodworking");
-
-    /// A const lvalue reference to the model can be obtained through
-    /// the method model()
-    for(auto p : operson.get<skills>().model())
-        std::cout << p.second << std::endl;    
 }

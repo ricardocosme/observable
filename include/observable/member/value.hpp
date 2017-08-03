@@ -55,6 +55,13 @@ struct value_impl<Class, ValueType, void>
         _on_change = std::move(rhs._on_change);
         return *this;
     }
+
+    template<typename T>
+    value_impl& operator=(T&& o)
+    {
+        set(std::forward<T>(o));
+        return *this;
+    }
     
     void set(Model o)
     {
