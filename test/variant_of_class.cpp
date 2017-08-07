@@ -12,11 +12,13 @@ ofoo_t factory(foo_t& o)
     return ofoo_t(o, o.i);
 }
 // }
+namespace observable{
 template<>
-struct observable::is_class<foo_t> : std::true_type
+struct is_class<foo_t> : std::true_type
 {
     using type = ofoo_t;
 };
+}
 
 struct bar_t{ std::string s; };
 struct s{};
@@ -24,11 +26,13 @@ using obar_t = observable::class_<
     bar_t,
     std::pair<std::string, s>>;
 
+namespace observable{
 template<>
-struct observable::is_class<bar_t> : std::true_type
+struct is_class<bar_t> : std::true_type
 {
     using type = obar_t;
 };
+}
 
 // namespace observable{
 obar_t factory(bar_t& o)

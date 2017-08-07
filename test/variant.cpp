@@ -57,6 +57,7 @@ struct visitor_on_change_t
 
 int main()
 {
+    static_assert(observable::is_variant<variant_t>::value, "error");
     foo_t foo;
     obs_t obs(foo, foo.variant);
 

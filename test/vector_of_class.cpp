@@ -18,11 +18,13 @@ using oelement_t = observable::class_<
 oelement_t factory(element_t& model)
 { return oelement_t(model, model.s); }
 
+namespace observable {
 template<>
-struct observable::is_class<element_t> : std::true_type
+struct is_class<element_t> : std::true_type
 {
     using type = oelement_t;
 };
+}
     
 struct elements{};
 using ofoo_t = observable::class_<

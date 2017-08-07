@@ -41,8 +41,8 @@ struct is_unordered_set<std::unordered_set<T>>
 template<typename T>
 struct is_variant : std::false_type {};
     
-template<typename... T>
-struct is_variant<boost::variant<T...>>
+template<BOOST_VARIANT_ENUM_PARAMS(typename T)>
+struct is_variant<boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>>
     : std::true_type {};
 }
 

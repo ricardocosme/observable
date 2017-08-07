@@ -1,5 +1,6 @@
 #include <observable/class.hpp>
 #include <iostream>
+#include <type_traits>
 
 struct l3_t
 { double num; };
@@ -18,11 +19,13 @@ inline ol3_t factory(l3_t& model)
 }
 // }
 
+namespace observable {
 template<>
-struct ::observable::is_class<l3_t> : std::true_type
+struct is_class<l3_t> : std::true_type
 {
     using type = ol3_t;
 };
+}
 
 struct l2_t
 { l3_t l3; };
@@ -41,11 +44,13 @@ inline ol2_t factory(l2_t& model)
 }
 // }
 
+namespace observable {
 template<>
-struct ::observable::is_class<l2_t> : std::true_type
+struct is_class<l2_t> : std::true_type
 {
     using type = ol2_t;
 };
+}
 
 struct l1_t
 { l2_t l2; };
@@ -64,11 +69,13 @@ inline ol1_t factory(l1_t& model)
 }
 }
 
+namespace observable {
 template<>
-struct ::observable::is_class<l1_t> : std::true_type
+struct is_class<l1_t> : std::true_type
 {
     using type = ol1_t;
 };
+}
 
 int main()
 {
