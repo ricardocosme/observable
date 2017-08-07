@@ -1,4 +1,5 @@
 #include "observable/class.hpp"
+#include "observable/observable_is_class.hpp"
 
 struct foo_t{ int i; };
 struct i{};
@@ -6,19 +7,12 @@ using ofoo_t = observable::class_<
     foo_t,
     std::pair<int, i>>;
 
-// namespace observable{
-ofoo_t factory(foo_t& o)
+ofoo_t observable_factory(foo_t& o)
 {
     return ofoo_t(o, o.i);
 }
-// }
-namespace observable{
-template<>
-struct is_class<foo_t> : std::true_type
-{
-    using type = ofoo_t;
-};
-}
+
+OBSERVABLE_IS_CLASS(ofoo_t)
 
 struct bar_t{ std::string s; };
 struct s{};
@@ -26,20 +20,13 @@ using obar_t = observable::class_<
     bar_t,
     std::pair<std::string, s>>;
 
-namespace observable{
-template<>
-struct is_class<bar_t> : std::true_type
-{
-    using type = obar_t;
-};
-}
+OBSERVABLE_IS_CLASS(obar_t)
 
-// namespace observable{
-obar_t factory(bar_t& o)
+obar_t observable_factory(bar_t& o)
 {
     return obar_t(o, o.s);
 }
-// }
+
 using variant_t = boost::variant<foo_t, bar_t>;
 struct variant{};
 struct class_variant_t

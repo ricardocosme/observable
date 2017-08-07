@@ -16,7 +16,7 @@ int main()
     person_t model{"maria", 26};
 
     /// Get an observable of person
-    auto operson = observable::factory(model);
+    auto operson = observable_factory(model);
 
     /// Register a closure to react to any change of person
     operson.on_change(

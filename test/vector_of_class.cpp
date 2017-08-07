@@ -1,4 +1,5 @@
 #include "observable/class.hpp"
+#include "observable/observable_is_class.hpp"
 
 #include <iostream>
 #include <string>
@@ -15,16 +16,10 @@ using oelement_t = observable::class_<
     std::pair<std::string, s>
     >;
 
-oelement_t factory(element_t& model)
+oelement_t observable_factory(element_t& model)
 { return oelement_t(model, model.s); }
 
-namespace observable {
-template<>
-struct is_class<element_t> : std::true_type
-{
-    using type = oelement_t;
-};
-}
+OBSERVABLE_IS_CLASS(oelement_t)
     
 struct elements{};
 using ofoo_t = observable::class_<
@@ -32,7 +27,7 @@ using ofoo_t = observable::class_<
     std::pair<vector_t, elements>
     >;
 
-ofoo_t factory(foo_t& model)
+ofoo_t observable_factory(foo_t& model)
 { return ofoo_t(model, model.elements); }
 
 int main()
@@ -40,7 +35,7 @@ int main()
     element_t e0{"abc"};
     element_t e1{"def"};
     foo_t foo{{e0, e1}};
-    auto ofoo = factory(foo);
+    auto ofoo = observable_factory(foo);
     auto& oelements = ofoo.get<elements>();
     bool foo_on_change{false};
     bool elements_on_change{false};

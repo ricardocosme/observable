@@ -13,10 +13,9 @@ struct observable_of;
     
 template<typename T>
 using observable_of_t = typename observable_of<T>::type;
-    
-template<typename T>
-T& factory(T& o)
-{ return o; }
-    
+        
 }
 
+template<typename T>
+observable::observable_of_t<T> observable_factory(T& o)
+{ return o; }

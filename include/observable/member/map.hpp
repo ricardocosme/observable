@@ -329,7 +329,7 @@ private:
             auto& it2observable = _it2observable;
             auto it_ptr = &*it;
             observable = std::shared_ptr<reference>
-                (new reference(factory(it->second)),
+                (new reference(observable_factory(it->second)),
                  [&it2observable, it_ptr](reference *p)
                  {
                      it2observable.erase(it_ptr);

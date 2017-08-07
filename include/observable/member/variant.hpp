@@ -32,7 +32,7 @@ struct set_variant_t
     {    
         using observable_t = observable_of_t
             <typename std::decay<T>::type>;
-        _ovariant = observable_t(factory(o));
+        _ovariant = observable_t(observable_factory(o));
     }
     ObservableVariant& _ovariant;
 };

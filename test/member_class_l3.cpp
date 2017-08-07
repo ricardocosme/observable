@@ -1,4 +1,5 @@
 #include <observable/class.hpp>
+#include <observable/observable_is_class.hpp>
 #include <iostream>
 #include <type_traits>
 
@@ -12,20 +13,12 @@ using ol3_t = observable::class_<
     std::pair<double, num>
     >;
 
-// namespace observable {
-inline ol3_t factory(l3_t& model)
+inline ol3_t observable_factory(l3_t& model)
 {
     return ol3_t(model, model.num);
 }
-// }
 
-namespace observable {
-template<>
-struct is_class<l3_t> : std::true_type
-{
-    using type = ol3_t;
-};
-}
+OBSERVABLE_IS_CLASS(ol3_t)
 
 struct l2_t
 { l3_t l3; };
@@ -37,20 +30,12 @@ using ol2_t = observable::class_<
     std::pair<l3_t, l3>
     >;
 
-// namespace observable {
-inline ol2_t factory(l2_t& model)
+inline ol2_t observable_factory(l2_t& model)
 {
     return ol2_t(model, model.l3);
 }
-// }
 
-namespace observable {
-template<>
-struct is_class<l2_t> : std::true_type
-{
-    using type = ol2_t;
-};
-}
+OBSERVABLE_IS_CLASS(ol2_t)
 
 struct l1_t
 { l2_t l2; };
@@ -62,25 +47,17 @@ using ol1_t = observable::class_<
     std::pair<l2_t, l2>
     >;
 
-namespace observable {
-inline ol1_t factory(l1_t& model)
+inline ol1_t observable_factory(l1_t& model)
 {
     return ol1_t(model, model.l2);
 }
-}
 
-namespace observable {
-template<>
-struct is_class<l1_t> : std::true_type
-{
-    using type = ol1_t;
-};
-}
+OBSERVABLE_IS_CLASS(ol1_t)
 
 int main()
 {
     auto l1 = l1_t{l2_t{{5.6}}};
-    auto ol1 = observable::factory(l1);
+    auto ol1 = observable_factory(l1);
     auto& ol2 = ol1.get<l2>();
     auto& ol3 = ol2.get<l3>();
     bool l1_on_change_called{false};

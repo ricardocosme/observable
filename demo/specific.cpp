@@ -6,7 +6,7 @@ int main()
 {
     person_t model{"maria", 26};
 
-    auto person = observable::factory(model);
+    auto person = observable_factory(model);
     
     person.on_change<name>(
         [](const std::string& name)

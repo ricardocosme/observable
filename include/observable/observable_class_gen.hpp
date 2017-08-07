@@ -41,12 +41,4 @@
 
 #define OBSERVABLE_CLASS_GEN(oclass, model, members) \
     OBSERVABLE_gen_tags(members) \
-    using oclass = OBSERVABLE_gen_oclass(model, members);  \
-    namespace observable { \
-    template<> \
-    struct is_class<model>        \
-        : std::true_type \
-    { using type = oclass; }; \
-    inline oclass factory(model& m) \
-    { return oclass(m, OBSERVABLE_gen_factory_params(members)); } \
-    }
+    using oclass = OBSERVABLE_gen_oclass(model, members);

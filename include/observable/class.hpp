@@ -92,7 +92,7 @@ public:
            typename Members::second_type,
            observable_of_t<typename Members::first_type>>
            (observable_of_t<typename Members::first_type>
-            (factory(args)))...)
+            (observable_factory(args)))...)
     {
         for_each(_tag2member,
                  set_on_change<class_<Model_, Members...>>{*this});

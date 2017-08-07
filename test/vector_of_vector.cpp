@@ -13,7 +13,7 @@ using ofoo_t = observable::class_<
     std::pair<vector_t, elements>
     >;
 
-ofoo_t factory(foo_t& model)
+ofoo_t observable_factory(foo_t& model)
 { return ofoo_t(model, model.elements); }
 
 int main()
@@ -21,7 +21,7 @@ int main()
     std::vector<std::string> e0{"abc"};
     std::vector<std::string> e1{"def"};
     foo_t foo{{e0, e1}};
-    auto ofoo = factory(foo);
+    auto ofoo = observable_factory(foo);
     auto& oelements = ofoo.get<elements>();
     bool foo_on_change{false};
     bool elements_on_change{false};
