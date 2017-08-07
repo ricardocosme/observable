@@ -12,7 +12,7 @@ struct d{};
 
 using obs_t = observable::class_<
     foo_t,
-    observable::member::value<double, d>
+    std::pair<double, d>
     >;
 
 int main()

@@ -13,12 +13,12 @@ struct foo_t
 struct variant{};
 using obs_t = observable::class_<
     foo_t,
-    observable::member::variant<variant_t, variant>
+    std::pair<variant_t, variant>
     >;
 
-using OVariant = obs_t::observable_of<variant>;
-using OInt = OVariant::observable_of<int>;
-using OString = OVariant::observable_of<std::string>;
+using OVariant = observable::observable_of_t<variant>;
+using OInt = observable::observable_of_t<int>;
+using OString = observable::observable_of_t<std::string>;
 
 struct visitor_t
 {

@@ -42,7 +42,7 @@ struct class_impl<Class, Model_, ObservableClass, void>
              { parent._on_change(parent.model()); });
     }
 
-    class_impl(class_impl&& rhs)
+    class_impl(class_impl&& rhs) noexcept
         : _observable_class(std::move(rhs._observable_class))
         , _parent(rhs._parent)
     {
@@ -52,7 +52,7 @@ struct class_impl<Class, Model_, ObservableClass, void>
              { parent._on_change(parent.model()); });
     }
     
-    class_impl& operator=(class_impl&& rhs)
+    class_impl& operator=(class_impl&& rhs) noexcept
     {
         _observable_class = std::move(rhs._observable_class);
         _parent = rhs._parent;
@@ -80,7 +80,7 @@ struct class_impl<Class, Model_, ObservableClass, void>
     template<typename F>
     boost::signals2::connection on_change(F&& f)
     { return _observable_class._on_change.connect(std::forward<F>(f)); }
-    
+
     ObservableClass _observable_class;
     parent_t* _parent{nullptr};
     boost::signals2::scoped_connection _parent_on_change_conn;

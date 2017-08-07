@@ -6,10 +6,11 @@
 
 #pragma once
 
+#include "observable/traits.hpp"
 #include "observable/member/value.hpp"
-#include "observable/member/class.hpp"
 #include "observable/member/unordered_set.hpp"
 #include "observable/member/map.hpp"
+#include "observable/member/variant.hpp"
 #include "observable/member/vector.hpp"
 #include <boost/signals2.hpp>
 #include <boost/fusion/include/map.hpp>
@@ -25,118 +26,51 @@ namespace observable {
 
 template<typename>
 class scoped_on_change_t;
-        
-template<typename Class, typename Member, typename Enable = void>
-struct observable_impl;
-
-template<typename Class, typename Member>
-struct observable_impl<
-    Class,
-    Member,
-    typename std::enable_if<
-        std::is_same<
-            typename Member::member_type,
-            member::value_tag
-        >::value
-    >::type
->
-{
-    using type = member::value_impl<Class, typename Member::model>;
-};
-        
-template<typename Class, typename Member>
-struct observable_impl<
-    Class,
-    Member,
-    typename std::enable_if<
-        std::is_same<
-            typename Member::member_type,
-            member::unordered_set_tag
-        >::value
-    >::type
->
-{
-    using type = member::unordered_set_impl<Class, typename Member::model>;
-};
-    
-template<typename Class, typename Member>
-struct observable_impl<
-    Class,
-    Member,
-    typename std::enable_if<
-        std::is_same<
-            typename Member::member_type,
-            member::map_tag
-        >::value
-    >::type
->
-{
-    using type = member::map_impl<Class,
-                          typename Member::model,
-                          typename Member::observable_value_type>;
-};
-        
-template<typename Class, typename Member>
-struct observable_impl<
-    Class,
-    Member,
-    typename std::enable_if<
-        std::is_same<
-            typename Member::member_type,
-            member::class_tag
-        >::value
-    >::type
->
-{
-    using type = member::class_impl<Class,
-                                    typename Member::model,
-                                    typename Member::observable_class>;
-};
-
-template<typename Class, typename Member>
-struct observable_impl<
-    Class,
-    Member,
-    typename std::enable_if<
-        std::is_same<
-            typename Member::member_type,
-            member::variant_tag
-        >::value
-    >::type
->
-{
-    using type = member::variant_impl<Class, typename Member::model>;
-};
-        
-template<typename Class, typename Member>
-struct observable_impl<
-    Class,
-    Member,
-    typename std::enable_if<
-        std::is_same<
-            typename Member::member_type,
-            member::vector_tag
-        >::value
-    >::type
->
-{
-    using type = member::vector_impl<Class,
-                                     typename Member::model,
-                                     typename Member::observable_value_type>;
-};
-    
+                    
 template<typename Parent>    
-struct set_parent
+struct set_on_change
 {
-    set_parent(Parent& p) : _parent(p) {}
+    set_on_change(Parent& p) : _parent(p) {}
     
     template<typename T>
     void operator()(T& o) const
-    { o.second._parent = &_parent; }
+    {
+        auto& parent = _parent;
+        parent.sc.push_back(
+            o.second.on_change(
+            [&parent](const typename T::second_type::Model&)
+            { parent._on_change(parent.model()); })
+            );
+    }
     
     Parent& _parent;
 };
-
+    
+template<typename Model>
+struct observable_of {
+    using type = typename std::conditional<
+        is_vector<Model>::value,
+        typename member::vector_impl<Model>,
+        typename std::conditional<
+            is_class<Model>::value,
+            typename is_class<Model>::type,
+            typename std::conditional<
+                is_variant<Model>::value,
+                member::variant_impl<Model>,
+                typename std::conditional<
+                    is_unordered_set<Model>::value,
+                    member::unordered_set_impl<Model>,
+                    typename std::conditional<
+                        is_map<Model>::value,
+                        member::map_impl<Model>,
+                        typename member::value_impl<Model>
+                    >::type
+                >::type
+            >::type
+        >::type
+    >::type;
+};
+    
 template<typename Model_, typename... Members>
 class class_ 
 {
@@ -144,38 +78,43 @@ public:
     using Model = Model_;
     using Tag2Member = boost::fusion::map<
         boost::fusion::pair<
-            typename Members::tag,
-            typename observable_impl<class_<Model, Members...>, Members>::type
+            typename Members::second_type,
+            observable_of_t<typename Members::first_type>
         >...>;
 
     class_() = default;
     
     class_(Model& model,
-           typename Members::model&... args)
+           typename Members::first_type&... args)
         : _model(&model)
         , _tag2member
           (boost::fusion::pair<
-           typename Members::tag,
-           typename observable_impl<class_<Model, Members...>, Members>::type>
-           (typename observable_impl<class_<Model, Members...>, Members>::type
-            (*this, args))...)
-    {}
+           typename Members::second_type,
+           observable_of_t<typename Members::first_type>>
+           (observable_of_t<typename Members::first_type>
+            (factory(args)))...)
+    {
+        for_each(_tag2member,
+                 set_on_change<class_<Model_, Members...>>{*this});
+    }
 
-    class_(class_&& rhs)
+    class_(class_&& rhs) noexcept
         : _model(rhs._model)
         , _on_change(std::move(rhs._on_change))
         , _under_transaction(rhs._under_transaction)
     {
+        rhs.sc.clear();
         for_each(rhs._tag2member,
-                 set_parent<class_<Model_, Members...>>{*this});
-        boost::fusion::move(std::move(rhs._tag2member), _tag2member);
+                 set_on_change<class_<Model_, Members...>>{*this});
+        boost::fusion::move(std::move(rhs._tag2member), _tag2member);        
     }
     
-    class_& operator=(class_&& rhs)
+    class_& operator=(class_&& rhs) noexcept
     {
         _model = rhs._model;
+        rhs.sc.clear();
         for_each(rhs._tag2member,
-                 set_parent<class_<Model_, Members...>>{*this});
+                 set_on_change<class_<Model_, Members...>>{*this});
         boost::fusion::move(std::move(rhs._tag2member), _tag2member);
         _on_change = std::move(rhs._on_change);
         _under_transaction = rhs._under_transaction;
@@ -207,36 +146,27 @@ public:
     const Model& model() const noexcept
     { return *_model; }
 
-    template<typename Tag>
-    struct observable_of_impl
-    {
-        using type = typename std::decay<
-            typename boost::fusion::result_of::at_key<
-                Tag2Member, Tag>::type>::type;
-    };
-
-    template<typename Tag>
-    using observable_of = typename observable_of_impl<Tag>::type;
-    
 private:
     
     Model* _model{nullptr};
     Tag2Member _tag2member;
     boost::signals2::signal<void(const Model&)> _on_change;
     bool _under_transaction{false};
-    template <typename> friend class observable::scoped_on_change_t;
-    template <typename,typename, typename, typename>
-    friend struct observable::member::class_impl;
-    template <typename,typename, typename>
+    std::vector<boost::signals2::scoped_connection> sc;
+    template <typename>
+    friend class observable::scoped_on_change_t;
+    template <typename>
     friend struct observable::member::map_impl;
-    template <typename,typename, typename>
+    template <typename>
     friend struct observable::member::value_impl;
-    template <typename,typename, typename>
+    template <typename>
     friend struct observable::member::variant_impl;
-    template <typename,typename, typename>
+    template <typename>
     friend struct observable::member::vector_impl;
-    template <typename,typename>
+    template <typename>
     friend struct observable::member::unordered_set_impl;
+    template<typename>
+    friend struct set_on_change;
 };
 
 }

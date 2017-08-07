@@ -26,8 +26,10 @@ run test/map.cpp ;
 run test/member_class_l3.cpp ;
 run test/unordered_set.cpp ;
 run test/variant.cpp ;
+run test/variant_of_class.cpp ;
 run test/vector.cpp ;
 run test/vector_of_class.cpp ;
+run test/vector_of_vector.cpp ;
 
 install stage
   : simple

@@ -13,20 +13,9 @@
 #include <boost/iterator.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
 #include <memory>
+#include <unordered_map>
 
 namespace observable { namespace member {
-
-struct vector_tag {};
-    
-template<typename Model, typename Tag,
-         typename ObservableValueType = value<Model, Tag>>
-struct vector
-{
-    using member_type = vector_tag;
-    using model = Model;
-    using tag = Tag;
-    using observable_value_type = ObservableValueType;
-};
 
 template<typename Observable>    
 class vector_iterator
@@ -56,58 +45,21 @@ private:
     
     Observable& _observable;    
 };
-
-template<typename VectorImpl, typename ObservableValueType, typename Enable = void>
-struct observable_value_type_impl;
-        
-template<typename VectorImpl, typename ObservableValueType>
-struct observable_value_type_impl<
-    VectorImpl,
-    ObservableValueType,
-    typename std::enable_if<
-        std::is_same<
-            typename ObservableValueType::member_type,
-            value_tag
-        >::value
-    >::type
->    
-{
-    using type = value_impl<VectorImpl,
-                            typename VectorImpl::Model::value_type, container_tag>;
-};
-        
-template<typename VectorImpl, typename ObservableValueType>
-struct observable_value_type_impl<
-    VectorImpl,
-    ObservableValueType,
-    typename std::enable_if<
-        !std::is_same<
-            typename ObservableValueType::Tag2Member,
-            void
-        >::value
-    >::type
->
-{    
-    using type = class_impl<VectorImpl,
-                            typename ObservableValueType::Model,
-                            ObservableValueType, container_tag>;
-};
-        
-template<typename Class, typename Model_, typename ObservableValueType>
+            
+template<typename Model_>
 struct vector_impl
 {
     using Model = Model_;
-    using parent_t = Class;
-    using reference = typename observable_value_type_impl
-        <vector_impl<Class, Model, ObservableValueType>, ObservableValueType>::type;
-    using iterator = vector_iterator<vector_impl<Class, Model, ObservableValueType>>;
+
+    using reference = observable_of_t<typename Model::value_type>;
+    
+    using iterator = vector_iterator<vector_impl<Model>>;
     using difference_type = typename Model::difference_type;
 
     vector_impl() = default;
     
-    vector_impl(parent_t& parent, Model& value)
+    vector_impl(Model& value)
         : _model(&value)
-        , _parent(&parent)
     {}
     
     iterator begin() noexcept
@@ -200,24 +152,16 @@ struct vector_impl
     void clear() noexcept
     {
         _model->clear();
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model, typename Model::const_iterator{});
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model, typename Model::const_iterator{});
+        _on_change(*_model);
     }
     
     //GCC 4.8.2 uses iterator and not const_iterator for the first argument
     iterator erase(iterator pos)        
     {
         auto it = _model->erase(pos.base());
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model, it);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model, it);
+        _on_change(*_model);
         return iterator(*this, it);
     }
     
@@ -225,12 +169,8 @@ struct vector_impl
     iterator erase(iterator first, iterator last)        
     {
         auto it = _model->erase(first.base(), last.base());
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model, it);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model, it);
+        _on_change(*_model);
         return iterator(*this, it);
     }
         
@@ -239,12 +179,8 @@ struct vector_impl
     iterator emplace(typename Model::iterator pos, Args&&... args)
     {
         auto it = _model->emplace(pos, std::forward<Args>(args)...);
-        if (!_parent->_under_transaction)
-        {
-            _on_insert(*_model, it);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_insert(*_model, it);
+        _on_change(*_model);
         return iterator(*this, it);
     }
     
@@ -259,12 +195,8 @@ struct vector_impl
                     const typename Model::value_type& value)
     {
         auto it = _model->insert(pos, value);
-        if (!_parent->_under_transaction)
-        {
-            _on_insert(*_model, it);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_insert(*_model, it);
+        _on_change(*_model);
         return iterator(*this, it);
     }
     
@@ -273,12 +205,8 @@ struct vector_impl
                     typename Model::value_type&& value)
     {
         auto it = _model->insert(pos, std::move(value));
-        if (!_parent->_under_transaction)
-        {
-            _on_insert(*_model, it);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_insert(*_model, it);
+        _on_change(*_model);
         return iterator(*this, it);
     }
             
@@ -289,12 +217,8 @@ struct vector_impl
                 const typename Model::value_type& value)
     {
         _model->insert(pos, count, value);
-        if (!_parent->_under_transaction)
-        {
-            _on_insert(*_model, pos);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_insert(*_model, pos);
+        _on_change(*_model);
     }
         
     //GCC 4.8.2 uses iterator and not const_iterator for the first
@@ -303,12 +227,8 @@ struct vector_impl
     void insert(typename Model::iterator pos, InputIt first, InputIt last)
     {
         _model->insert(pos, first, last);
-        if (!_parent->_under_transaction)
-        {
-            _on_insert(*_model, pos);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_insert(*_model, pos);
+        _on_change(*_model);
     }
         
     void insert(typename Model::iterator pos,
@@ -318,46 +238,30 @@ struct vector_impl
     void push_back(const typename Model::value_type& value)
     {
         _model->push_back(value);
-        if (!_parent->_under_transaction)
-        {
-            _on_insert(*_model, std::prev(_model->end()));
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_insert(*_model, std::prev(_model->end()));
+        _on_change(*_model);
     }
     
     void push_back(typename Model::value_type&& value)
     {
         _model->push_back(std::move(value));
-        if (!_parent->_under_transaction)
-        {
-            _on_insert(*_model, std::prev(_model->end()));
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_insert(*_model, std::prev(_model->end()));
+        _on_change(*_model);
     }
 
     template<typename...Args>
     void emplace_back(Args&&... args)
     {
         _model->emplace_back(std::forward<Args>(args)...);
-        if (!_parent->_under_transaction)
-        {
-            _on_insert(*_model, std::prev(_model->end()));
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_insert(*_model, std::prev(_model->end()));
+        _on_change(*_model);
     }
     
     void pop_back()
     {
         _model->pop_back();
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model, typename Model::const_iterator{});
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
-        }
+        _on_erase(*_model, typename Model::const_iterator{});
+        _on_change(*_model);
     }
     
     void swap(Model& other)
@@ -367,7 +271,6 @@ struct vector_impl
         _on_insert(*_model, typename Model::const_iterator{});
         _on_erase(*_model, typename Model::const_iterator{});
         _on_change(*_model);
-        _parent->_on_change(*(_parent->_model));            
     }
 
     //TODO resize
@@ -392,7 +295,6 @@ struct vector_impl
     { return *_model; }
     
     Model* _model;
-    parent_t* _parent;
     
     boost::signals2::signal<void(const Model&, typename Model::const_iterator)>
     _on_erase, _on_insert, _on_value_change;
@@ -410,17 +312,24 @@ private:
             auto& it2observable = _it2observable;
             auto it_ptr = &*it;
             observable = std::shared_ptr<reference>
-                (new reference(*this, *it, it),
+                (new reference(factory(*it)),
                  [&it2observable, it_ptr](reference *p)
                  {
                      it2observable.erase(it_ptr);
                      delete p;
                  });
+            auto& vec = *this;
+            observable->_on_change.connect(
+                [&vec, it](const typename reference::Model&)
+                {
+                    vec._on_value_change(vec.model(), it);
+                    vec._on_change(vec.model());
+                });
+                
             it2observable[&*it] = observable;
         }
         return observable;
     }
-    friend class vector_iterator<vector_impl<Class, Model, ObservableValueType>>;
+    friend class vector_iterator<vector_impl<Model>>;
 };
-    
 }}

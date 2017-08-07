@@ -7,8 +7,16 @@
 #pragma once
 
 namespace observable {
+
+template<typename Model>
+struct observable_of;
     
-struct container_tag{};
+template<typename T>
+using observable_of_t = typename observable_of<T>::type;
+    
+template<typename T>
+T& factory(T& o)
+{ return o; }
     
 }
 

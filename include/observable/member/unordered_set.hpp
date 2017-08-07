@@ -10,27 +10,15 @@
 
 namespace observable { namespace member {
 
-struct unordered_set_tag {};
-    
-template<typename Model, typename Tag>
-struct unordered_set
-{
-    using member_type = unordered_set_tag;
-    using model = Model;
-    using tag = Tag;
-};
-    
-template<typename Class, typename Model_>
+template<typename Model_>
 struct unordered_set_impl
 {
     using Model = Model_;
-    using parent_t = Class;
     
     unordered_set_impl() = default;
     
-    unordered_set_impl(parent_t& parent, Model& value)
+    unordered_set_impl(Model& value)
         : _model(&value)
-        , _parent(&parent)
     {}
     
     typename Model::iterator begin() noexcept
@@ -57,23 +45,15 @@ struct unordered_set_impl
     void clear() noexcept
     {
         _model->clear();
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model);
+        _on_change(*_model);
     }
     
     typename Model::iterator erase(typename Model::const_iterator pos)        
     {
         auto it = _model->erase(pos);
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model);
+        _on_change(*_model);
         return it;
     }
     
@@ -81,23 +61,18 @@ struct unordered_set_impl
                                   typename Model::const_iterator last)        
     {
         auto it = _model->erase(first, last);
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model);
+        _on_change(*_model);
         return it;
     }
     
     typename Model::size_type erase(const typename Model::key_type& key)
     {
         auto n = _model->erase(key);
-        if (n > 0 && !_parent->_under_transaction)
+        if (n > 0)
         {
             _on_erase(*_model);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
         }
         return n;
     }
@@ -106,11 +81,10 @@ struct unordered_set_impl
     std::pair<typename Model::iterator, bool> emplace(Args&&... args)
     {
         auto ret = _model->emplace(std::forward<Args>(args)...);
-        if (ret.second && !_parent->_under_transaction)
+        if (ret.second)
         {
             _on_insert(*_model);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return ret;
     }
@@ -121,11 +95,10 @@ struct unordered_set_impl
     {
         auto before_size = _model->size();
         auto it = _model->emplace_hint(hint, std::forward<Args>(args)...);
-        if (_model->size() != before_size && !_parent->_under_transaction)
+        if (_model->size() != before_size)
         {
             _on_insert(*_model);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return it;
     }
@@ -134,11 +107,10 @@ struct unordered_set_impl
     (const typename Model::value_type& value)
     {
         auto ret = _model->insert(value);
-        if (ret.second && !_parent->_under_transaction)
+        if (ret.second)
         {
             _on_insert(*_model);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return ret;        
     }
@@ -147,11 +119,10 @@ struct unordered_set_impl
     (typename Model::value_type&& value)
     {
         auto ret = _model->insert(std::move(value));
-        if (ret.second && !_parent->_under_transaction)
+        if (ret.second)
         {
             _on_insert(*_model);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return ret;        
     }
@@ -162,11 +133,10 @@ struct unordered_set_impl
     {
         auto before_size = _model->size();
         auto it = _model->insert(hint, value);
-        if (_model->size() != before_size && !_parent->_under_transaction)
+        if (_model->size() != before_size)
         {
             _on_insert(*_model);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return it;
     }
@@ -177,11 +147,10 @@ struct unordered_set_impl
     {
         auto before_size = _model->size();
         auto it = _model->insert(hint, std::move(value));
-        if (_model->size() != before_size && !_parent->_under_transaction)
+        if (_model->size() != before_size)
         {
             _on_insert(*_model);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return it;
     }
@@ -191,11 +160,10 @@ struct unordered_set_impl
     {
         auto before_size = _model->size();
         _model->insert(first, last);
-        if (_model->size() != before_size && !_parent->_under_transaction)
+        if (_model->size() != before_size)
         {
             _on_insert(*_model);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
     }
     
@@ -211,7 +179,6 @@ struct unordered_set_impl
         _on_insert(*_model);
         _on_erase(*_model);
         _on_change(*_model);
-        _parent->_on_change(*(_parent->_model));            
     }
 
     typename Model::size_type count
@@ -252,7 +219,6 @@ struct unordered_set_impl
     { return *_model; }
     
     Model* _model;
-    parent_t* _parent;
     
     boost::signals2::signal<void(const Model&)> _on_erase, _on_insert,
         _on_change;

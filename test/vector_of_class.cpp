@@ -12,16 +12,22 @@ struct foo_t
 struct s{};
 using oelement_t = observable::class_<
     element_t,
-    observable::member::value<std::string, s>
+    std::pair<std::string, s>
     >;
 
 oelement_t factory(element_t& model)
 { return oelement_t(model, model.s); }
 
+template<>
+struct observable::is_class<element_t> : std::true_type
+{
+    using type = oelement_t;
+};
+    
 struct elements{};
 using ofoo_t = observable::class_<
     foo_t,
-    observable::member::vector<vector_t, elements, oelement_t>
+    std::pair<vector_t, elements>
     >;
 
 ofoo_t factory(foo_t& model)

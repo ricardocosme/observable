@@ -16,7 +16,7 @@ struct set{};
 
 using obs_t = observable::class_<
     foo_t,
-    observable::member::unordered_set<set_t, set>
+    std::pair<set_t, set>
     >;
 
 int main()

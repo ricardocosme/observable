@@ -16,7 +16,7 @@ struct vector{};
 
 using obs_t = observable::class_<
     foo_t,
-    observable::member::vector<vector_t, vector>
+    std::pair<vector_t, vector>
     >;
 
 int main()

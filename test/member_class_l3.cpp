@@ -8,7 +8,7 @@ struct num {};
 
 using ol3_t = observable::class_<
     l3_t,
-    observable::member::value<double, num>
+    std::pair<double, num>
     >;
 
 // namespace observable {
@@ -18,6 +18,12 @@ inline ol3_t factory(l3_t& model)
 }
 // }
 
+template<>
+struct ::observable::is_class<l3_t> : std::true_type
+{
+    using type = ol3_t;
+};
+
 struct l2_t
 { l3_t l3; };
 
@@ -25,7 +31,7 @@ struct l3 {};
 
 using ol2_t = observable::class_<
     l2_t,
-    observable::member::class_<l3_t, ol3_t, l3>
+    std::pair<l3_t, l3>
     >;
 
 // namespace observable {
@@ -35,6 +41,12 @@ inline ol2_t factory(l2_t& model)
 }
 // }
 
+template<>
+struct ::observable::is_class<l2_t> : std::true_type
+{
+    using type = ol2_t;
+};
+
 struct l1_t
 { l2_t l2; };
 
@@ -42,7 +54,7 @@ struct l2 {};
 
 using ol1_t = observable::class_<
     l1_t,
-    observable::member::class_<l2_t, ol2_t, l2>
+    std::pair<l2_t, l2>
     >;
 
 namespace observable {
@@ -51,6 +63,12 @@ inline ol1_t factory(l1_t& model)
     return ol1_t(model, model.l2);
 }
 }
+
+template<>
+struct ::observable::is_class<l1_t> : std::true_type
+{
+    using type = ol1_t;
+};
 
 int main()
 {

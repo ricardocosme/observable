@@ -18,18 +18,6 @@
 
 namespace observable { namespace member {
 
-struct map_tag {};
-    
-template<typename Model, typename Tag,
-         typename ObservableValueType = value<Model, Tag>>
-struct map
-{
-    using member_type = map_tag;
-    using model = Model;
-    using tag = Tag;
-    using observable_value_type = ObservableValueType;
-};
-
 template<typename Model>    
 class map_iterator
     : public boost::iterator_adaptor<
@@ -73,59 +61,20 @@ private:
     Model& _model;    
 };
 
-template<typename MapImpl, typename ObservableValueType, typename Enable = void>
-struct observable_mapped_type_impl;
-        
-template<typename MapImpl, typename ObservableValueType>
-struct observable_mapped_type_impl<
-    MapImpl,
-    ObservableValueType,
-    typename std::enable_if<
-        std::is_same<
-            typename ObservableValueType::member_type,
-            value_tag
-        >::value
-    >::type
->    
-{
-    using type = value_impl<MapImpl,
-                            typename MapImpl::Model::mapped_type,
-                            container_tag>;
-};
-        
-template<typename MapImpl, typename ObservableValueType>
-struct observable_mapped_type_impl<
-    MapImpl,
-    ObservableValueType,
-    typename std::enable_if<
-        !std::is_same<
-            typename ObservableValueType::Tag2Member,
-            void
-        >::value
-    >::type
->
-{    
-    using type = variant_impl<MapImpl,
-                              typename ObservableValueType::Model::mapped_type,
-                              container_tag>;
-};
-            
-template<typename Class, typename Model_, typename ObservableValueType>
+template<typename Model_>
 struct map_impl
 {
     using Model = Model_;
-    using parent_t = Class;
-    using reference = typename observable_mapped_type_impl<
-        map_impl<Class, Model, ObservableValueType>,
-        ObservableValueType>::type;
-    using iterator = map_iterator<map_impl<Class, Model, ObservableValueType>>;
+    
+    using reference = observable_of_t<typename Model::mapped_type>;
+    
+    using iterator = map_iterator<map_impl<Model>>;
     using difference_type = typename Model::difference_type;
 
     map_impl() = default;
     
-    map_impl(parent_t& parent, Model& value)
+    map_impl(Model& value)
         : _model(&value)
-        , _parent(&parent)
     {}
     
     iterator begin() noexcept
@@ -199,23 +148,15 @@ struct map_impl
     void clear() noexcept
     {
         _model->clear();
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model, typename Model::const_iterator{});
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model, typename Model::const_iterator{});
+        _on_change(*_model);
     }
     
     iterator erase(typename Model::const_iterator pos)        
     {
         auto it = _model->erase(pos);
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model, it);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model, it);
+        _on_change(*_model);
         return iterator(*this, it);
     }
     
@@ -223,12 +164,8 @@ struct map_impl
                    typename Model::const_iterator last)        
     {
         auto it = _model->erase(first, last);
-        if (!_parent->_under_transaction)
-        {
-            _on_erase(*_model, it);
-            _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
-        }
+        _on_erase(*_model, it);
+        _on_change(*_model);
         return iterator(*this, it);
     }
     
@@ -238,11 +175,10 @@ struct map_impl
         auto before_size = _model->size();
         erase(rng.first, rng.second);
         auto n = before_size - _model->size();
-        if (n > 0 && !_parent->_under_transaction)
+        if (n > 0)
         {
             _on_erase(*_model, rng.second);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));
         }
         return n;
     }
@@ -251,11 +187,10 @@ struct map_impl
     std::pair<iterator, bool> emplace(Args&&... args)
     {
         auto ret = _model->emplace(std::forward<Args>(args)...);
-        if (ret.second && !_parent->_under_transaction)
+        if (ret.second)
         {
             _on_insert(*_model, ret.first);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return std::make_pair(iterator(*this, ret.first), ret.second);
     }
@@ -266,11 +201,10 @@ struct map_impl
     {
         auto before_size = _model->size();
         auto it = _model->emplace_hint(hint, std::forward<Args>(args)...);
-        if (_model->size() != before_size && !_parent->_under_transaction)
+        if (_model->size() != before_size)
         {
             _on_insert(*_model, it);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return iterator(*this, it);
     }
@@ -279,11 +213,10 @@ struct map_impl
     (const typename Model::value_type& value)
     {
         auto ret = _model->insert(value);
-        if (ret.second && !_parent->_under_transaction)
+        if (ret.second)
         {
             _on_insert(*_model, ret.first);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return std::make_pair(iterator(*this, ret.first), ret.second);
     }
@@ -291,11 +224,10 @@ struct map_impl
     std::pair<iterator, bool> insert(typename Model::value_type&& value)
     {
         auto ret = _model->insert(std::move(value));
-        if (ret.second && !_parent->_under_transaction)
+        if (ret.second)
         {
             _on_insert(*_model, ret.first);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return std::make_pair(iterator(*this, ret.first), ret.second);
     }
@@ -305,11 +237,10 @@ struct map_impl
     {
         auto before_size = _model->size();
         auto it = _model->insert(hint, value);
-        if (_model->size() != before_size && !_parent->_under_transaction)
+        if (_model->size() != before_size)
         {
             _on_insert(*_model, it);
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
         return iterator(*this, it);
     }
@@ -319,11 +250,10 @@ struct map_impl
     {
         auto before_size = _model->size();
         _model->insert(first, last);
-        if (_model->size() != before_size && !_parent->_under_transaction)
+        if (_model->size() != before_size)
         {
             _on_insert(*_model, typename Model::const_iterator{}); //TODO
             _on_change(*_model);
-            _parent->_on_change(*(_parent->_model));            
         }
     }
     
@@ -337,7 +267,6 @@ struct map_impl
         _on_insert(*_model, typename Model::const_iterator{});
         _on_erase(*_model, typename Model::const_iterator{});
         _on_change(*_model);
-        _parent->_on_change(*(_parent->_model));            
     }
 
     typename Model::size_type count
@@ -383,7 +312,6 @@ struct map_impl
     { return *_model; }
     
     Model* _model;
-    parent_t* _parent;
     
     boost::signals2::signal<void(const Model&, typename Model::const_iterator)>
     _on_erase, _on_insert, _on_value_change;
@@ -401,17 +329,24 @@ private:
             auto& it2observable = _it2observable;
             auto it_ptr = &*it;
             observable = std::shared_ptr<reference>
-                (new reference(*this, (*it).second, it),
+                (new reference(factory(it->second)),
                  [&it2observable, it_ptr](reference *p)
                  {
                      it2observable.erase(it_ptr);
                      delete p;
                  });
+            auto& map = *this;
+            observable->_on_change.connect(
+                [&map, it](const typename reference::Model&)
+                {
+                    map._on_value_change(map.model(), it);
+                    map._on_change(map.model());
+                });
             it2observable[&*it] = observable;
         }
         return observable;
     }
-    friend class map_iterator<map_impl<Class, Model, ObservableValueType>>;
+    friend class map_iterator<map_impl<Model>>;
 };
     
 }}
