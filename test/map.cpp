@@ -48,7 +48,7 @@ int main()
             assert(ob->get() == "abc");
             ob->on_change([&called](const std::string&)
                           { called = true; });
-            ob->set("def");
+            ob->assign("def");
             assert(ob->get() == "def");
             assert(called);
         }
@@ -94,7 +94,7 @@ int main()
         assert(ob->get() == map_t::mapped_type{});
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("def");
+        ob->assign("def");
         assert(ob->get() == "def");
         assert(called);
     }
@@ -109,7 +109,7 @@ int main()
         bool called{false};
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("def");
+        ob->assign("def");
         assert(ob->get() == "def");
         assert(called);
     }
@@ -129,7 +129,7 @@ int main()
         bool called{false};
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("def");
+        ob->assign("def");
         assert(ob->get() == "def");
         assert(called);
     }
@@ -143,7 +143,7 @@ int main()
         bool called{false};
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("def");
+        ob->assign("def");
         assert(ob->get() == "def");
         assert(called);
     }
@@ -376,7 +376,7 @@ int main()
         auto it2 = obs.get<map>().find(2);
         assert(it2 != obs.get<map>().end());
         auto ob2 = *it2;
-        ob2.second->set("def");
+        ob2.second->assign("def");
         assert(ob.second->get() == "def");
         assert(called);        
     }

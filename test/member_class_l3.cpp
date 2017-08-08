@@ -76,7 +76,7 @@ int main()
     
     ol3.get<num>().on_change([&l3_num_on_change_called](double)
                              { l3_num_on_change_called = true; });    
-    ol3.set<num>(9.5);
+    ol3.assign<num>(9.5);
     assert(l1_on_change_called);
     assert(l2_on_change_called);
     assert(l3_on_change_called);

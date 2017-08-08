@@ -48,7 +48,7 @@ int main()
             assert(ob->get() == "abc");
             ob->on_change([&called](const std::string&)
                           { called = true; });
-            ob->set("def");
+            ob->assign("def");
             assert(ob->get() == "def");
             assert(called);
         }
@@ -96,7 +96,7 @@ int main()
         assert(ob->get() == "abc");
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("def");
+        ob->assign("def");
         assert(ob->get() == "def");
         assert(called);
     }
@@ -118,7 +118,7 @@ int main()
         bool called{false};
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("def");
+        ob->assign("def");
         assert(ob->get() == "def");
         assert(called);
     }
@@ -133,7 +133,7 @@ int main()
         bool called{false};
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("def");
+        ob->assign("def");
         assert(ob->get() == "def");
         assert(called);
     }
@@ -148,7 +148,7 @@ int main()
         bool called{false};
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("ghi");
+        ob->assign("ghi");
         assert(ob->get() == "ghi");
         assert(called);
     }
@@ -171,7 +171,7 @@ int main()
         bool called{false};
         ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob->set("def");
+        ob->assign("def");
         assert(ob->get() == "def");
         assert(called);
     }

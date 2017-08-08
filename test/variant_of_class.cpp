@@ -40,10 +40,10 @@ struct visitor_t
     using result_type = void;
     
     result_type operator()(ofoo_t& o) const
-    { o.get<i>().set(10); }
+    { o.get<i>().assign(10); }
     
     result_type operator()(obar_t& o) const
-    { o.get<s>().set("hello"); }
+    { o.get<s>().assign("hello"); }
 };
 
 struct visitor_on_change_t

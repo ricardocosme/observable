@@ -42,11 +42,11 @@ struct value
     template<typename T>
     value& operator=(T&& o)
     {
-        set(std::forward<T>(o));
+        assign(std::forward<T>(o));
         return *this;
     }
     
-    void set(Model o)
+    void assign(Model o)
     {
         *_model = std::move(o);
         _on_change(*_model);

@@ -81,8 +81,8 @@ int main()
         os2.on_change([&s2_on_change](std::string)
                       { s2_on_change = true; });
     }
-    oelement->get<s>().set("GHI");
-    os.set("GHI");
+    oelement->get<s>().assign("GHI");
+    os.assign("GHI");
     
     assert(elements_on_value_change);
     assert(element_on_change);

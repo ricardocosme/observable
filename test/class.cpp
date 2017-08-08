@@ -22,7 +22,7 @@ int main()
         foo_t foo;
         obs_t obs(foo, foo.d);
         auto obs2 = std::move(obs);
-        obs2.set<d>(4.5);
+        obs2.assign<d>(4.5);
     }
     
     //move operator assignment
@@ -31,6 +31,6 @@ int main()
         obs_t obs(foo, foo.d);
         obs_t obs2(foo, foo.d);
         obs2 = std::move(obs);
-        obs2.set<d>(4.5);
+        obs2.assign<d>(4.5);
     }
 }

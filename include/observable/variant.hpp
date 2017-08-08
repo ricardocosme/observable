@@ -51,11 +51,11 @@ struct variant
     template<typename T>
     variant& operator=(T&& o)
     {
-        set(std::forward<T>(o));
+        assign(std::forward<T>(o));
         return *this;
     }
     
-    void set(Model o)
+    void assign(Model o)
     {
         *_model = std::move(o);
         
@@ -82,8 +82,6 @@ struct variant
     observable_variant_t _ovariant;
     
     boost::signals2::signal<void(const Model&)> _on_change;
-    
-    bool _under_transaction{false};
 };
     
 }

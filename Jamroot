@@ -17,7 +17,6 @@ project demos
   ;
 
 exe hide_model : demo/hide_model.cpp ;
-exe scoped : demo/scoped.cpp ;
 exe simple : demo/simple.cpp ;
 exe specific : demo/specific.cpp ;
 
@@ -34,7 +33,6 @@ run test/vector_of_vector.cpp ;
 install stage
   : simple
     specific
-    scoped
     hide_model
   ;
   

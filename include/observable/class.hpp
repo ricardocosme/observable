@@ -25,9 +25,6 @@
 
 namespace observable {
 
-template<typename>
-class scoped_on_change_t;
-                    
 template<typename Parent>    
 struct set_on_change
 {
@@ -105,7 +102,6 @@ public:
     class_(class_&& rhs) noexcept
         : _model(rhs._model)
         , _on_change(std::move(rhs._on_change))
-        , _under_transaction(rhs._under_transaction)
     {
         rhs.observable_on_change_conns.swap(observable_on_change_conns);
         set_on_change<class_<Model_, Members...>> visitor{*this};
@@ -121,13 +117,12 @@ public:
         for_each(rhs._tag2observable, visitor);
         boost::fusion::move(std::move(rhs._tag2observable), _tag2observable);
         _on_change = std::move(rhs._on_change);
-        _under_transaction = rhs._under_transaction;
         return *this;
     }
     
     template<typename Tag, typename T>
-    void set(T o)
-    { return boost::fusion::at_key<Tag>(_tag2observable).set(std::move(o)); }
+    void assign(T o)
+    { return boost::fusion::at_key<Tag>(_tag2observable).assign(std::move(o)); }
 
     template<typename Tag>
     auto get() ->
@@ -155,15 +150,11 @@ private:
     Model* _model{nullptr};
     Tag2Observable _tag2observable;
     boost::signals2::signal<void(const Model&)> _on_change;
-    bool _under_transaction{false};
 
     using observable_on_change_conns_t =
         std::array<boost::signals2::scoped_connection, sizeof...(Members)>;
     
     observable_on_change_conns_t observable_on_change_conns;
-    
-    template <typename>
-    friend class observable::scoped_on_change_t;
     
     template <typename>
     friend struct observable::map;

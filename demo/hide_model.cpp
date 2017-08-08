@@ -26,8 +26,8 @@ int main()
         [](const kids_t& skills)
         {std::cout << "kids has inserted" << std::endl;});
     
-    person.set<name>("MARIA");
-    person.set<age>(27);
+    person.assign<name>("MARIA");
+    person.assign<age>(27);
 
     auto& okids = person.get<kids>();
     okids.emplace("josefina");

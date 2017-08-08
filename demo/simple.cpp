@@ -32,7 +32,7 @@ int main()
     
     /// Change the person's name. This action emits the following signals:
     /// operson.on_change and operson.name.on_change
-    operson.set<name>("MARIA");
+    operson.assign<name>("MARIA");
 
     /// Get the observable of person.skills, which is an
     /// observable::map
@@ -59,6 +59,6 @@ int main()
     /// Get the observable of an specific container's element and
     /// change the value. This action emits the following signals:
     /// operson.skills.on_value_change and operson.on_change
-    auto o = oskills.at(8);
-    o->set("Woodworking");
+    auto oskill = oskills.at(8);
+    oskill->assign("Woodworking");
 }

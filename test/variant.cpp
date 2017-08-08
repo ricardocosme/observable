@@ -25,10 +25,10 @@ struct visitor_t
     using result_type = void;
     
     result_type operator()(OInt& o) const
-    { o.set(10); }
+    { o.assign(10); }
     
     result_type operator()(OString& o) const
-    { o.set("hello"); }
+    { o.assign("hello"); }
 };
 
 struct visitor_on_change_t
