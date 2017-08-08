@@ -29,7 +29,7 @@
     BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(members), OBSERVABLE_gen_tag, members)
 
 #define OBSERVABLE_gen_oclass(model, members) \
-    observable::class_< \
+    ::observable::class_<                      \
         model, OBSERVABLE_gen_members(members) \
     >
 
