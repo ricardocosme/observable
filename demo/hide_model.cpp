@@ -33,7 +33,7 @@ int main()
     okids.emplace("josefina");
     okids.emplace("lucas");
 
-    const auto& mkids = okids.model();
+    const auto& mkids = okids.get();
     for(const auto& kid : mkids)
         std::cout << "kid: " << kid << std::endl;
 }

@@ -229,7 +229,7 @@ struct unordered_set
     boost::signals2::connection on_change(F&& f)
     { return _on_change.connect(std::forward<F>(f)); }
     
-    const Model& model() const noexcept
+    const Model& get() const noexcept
     { return *_model; }
     
     Model* _model;

@@ -12,21 +12,21 @@
 
 namespace observable { 
             
-template<typename ValueType>
+template<typename Model_>
 struct value
 {
-    using Model = ValueType;
+    using Model = Model_;
 
     value() = default;
     
     value(Model& value)
-        : _value(&value)
+        : _model(&value)
     {
     }
 
     //noexcept to variant assignment?
     value(value&& rhs) noexcept
-        : _value(rhs._value)
+        : _model(rhs._model)
         , _on_change(std::move(rhs._on_change))
     {
     }
@@ -34,7 +34,7 @@ struct value
     //noexcept to variant assignment?
     value& operator=(value&& rhs) noexcept
     {
-        _value = rhs._value;
+        _model = rhs._model;
         _on_change = std::move(rhs._on_change);
         return *this;
     }
@@ -48,12 +48,12 @@ struct value
     
     void set(Model o)
     {
-        *_value = std::move(o);
-        _on_change(*_value);
+        *_model = std::move(o);
+        _on_change(*_model);
     }
     
     const Model& get() const noexcept
-    { return *_value; }
+    { return *_model; }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
@@ -61,7 +61,7 @@ struct value
         return _on_change.connect(std::forward<F>(f));
     }
     
-    Model* _value{nullptr};
+    Model* _model{nullptr};
     boost::signals2::signal<void(const Model&)> _on_change;
 };
     

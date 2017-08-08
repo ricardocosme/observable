@@ -20,6 +20,7 @@
 #include <boost/fusion/include/for_each.hpp>
 #include <boost/fusion/include/move.hpp>
 #include <boost/fusion/sequence/intrinsic/at_key.hpp>
+#include <array>
 #include <type_traits>
 
 namespace observable {
@@ -30,20 +31,23 @@ class scoped_on_change_t;
 template<typename Parent>    
 struct set_on_change
 {
-    set_on_change(Parent& p) : _parent(p) {}
+    set_on_change(Parent& p)
+        : _parent(p)
+        , _it(_parent.observable_on_change_conns.begin())
+    {}
     
     template<typename T>
     void operator()(T& o) const
     {
         auto& parent = _parent;
-        parent.sc.push_back(
+        *_it++ = 
             o.second.on_change(
             [&parent](const typename T::second_type::Model&)
-            { parent._on_change(parent.model()); })
-            );
+            { parent._on_change(parent.get()); });
     }
     
     Parent& _parent;
+    mutable typename Parent::observable_on_change_conns_t::iterator _it;
 };
     
 template<typename Model>
@@ -76,7 +80,7 @@ class class_
 {
 public:
     using Model = Model_;
-    using Tag2Member = boost::fusion::map<
+    using Tag2Observable = boost::fusion::map<
         boost::fusion::pair<
             typename Members::second_type,
             observable_of_t<typename Members::first_type>
@@ -87,15 +91,15 @@ public:
     class_(Model& model,
            typename Members::first_type&... args)
         : _model(&model)
-        , _tag2member
+        , _tag2observable
           (boost::fusion::pair<
            typename Members::second_type,
            observable_of_t<typename Members::first_type>>
            (observable_of_t<typename Members::first_type>
             (observable_factory(args)))...)
     {
-        for_each(_tag2member,
-                 set_on_change<class_<Model_, Members...>>{*this});
+        set_on_change<class_<Model_, Members...>> visitor{*this};
+        for_each(_tag2observable, visitor);
     }
 
     class_(class_&& rhs) noexcept
@@ -103,56 +107,60 @@ public:
         , _on_change(std::move(rhs._on_change))
         , _under_transaction(rhs._under_transaction)
     {
-        rhs.sc.clear();
-        for_each(rhs._tag2member,
-                 set_on_change<class_<Model_, Members...>>{*this});
-        boost::fusion::move(std::move(rhs._tag2member), _tag2member);        
+        rhs.observable_on_change_conns.swap(observable_on_change_conns);
+        set_on_change<class_<Model_, Members...>> visitor{*this};
+        for_each(rhs._tag2observable, visitor);
+        boost::fusion::move(std::move(rhs._tag2observable), _tag2observable);        
     }
     
     class_& operator=(class_&& rhs) noexcept
     {
         _model = rhs._model;
-        rhs.sc.clear();
-        for_each(rhs._tag2member,
-                 set_on_change<class_<Model_, Members...>>{*this});
-        boost::fusion::move(std::move(rhs._tag2member), _tag2member);
+        rhs.observable_on_change_conns.swap(observable_on_change_conns);        
+        set_on_change<class_<Model_, Members...>> visitor{*this};
+        for_each(rhs._tag2observable, visitor);
+        boost::fusion::move(std::move(rhs._tag2observable), _tag2observable);
         _on_change = std::move(rhs._on_change);
         _under_transaction = rhs._under_transaction;
         return *this;
     }
     
-    template<typename M, typename V>
-    void set(V o)
-    { return boost::fusion::at_key<M>(_tag2member).set(std::move(o)); }
+    template<typename Tag, typename T>
+    void set(T o)
+    { return boost::fusion::at_key<Tag>(_tag2observable).set(std::move(o)); }
 
-    template<typename M>
+    template<typename Tag>
     auto get() ->
-        decltype(boost::fusion::at_key<M>(
+        decltype(boost::fusion::at_key<Tag>(
                      std::declval<
-                     typename std::add_lvalue_reference<Tag2Member>::type>()))
-    { return boost::fusion::at_key<M>(_tag2member); }
+                     typename std::add_lvalue_reference<Tag2Observable>::type>()))
+    { return boost::fusion::at_key<Tag>(_tag2observable); }
     
-    template<typename M, typename F>
+    template<typename Tag, typename F>
     boost::signals2::connection on_change(F&& f)
     {
-        return boost::fusion::at_key<M>
-            (_tag2member).on_change(std::forward<F>(f));
+        return boost::fusion::at_key<Tag>
+            (_tag2observable).on_change(std::forward<F>(f));
     }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
     { return _on_change.connect(std::forward<F>(f)); }
     
-    const Model& model() const noexcept
+    const Model& get() const noexcept
     { return *_model; }
 
 private:
     
     Model* _model{nullptr};
-    Tag2Member _tag2member;
+    Tag2Observable _tag2observable;
     boost::signals2::signal<void(const Model&)> _on_change;
     bool _under_transaction{false};
-    std::vector<boost::signals2::scoped_connection> sc;
+
+    using observable_on_change_conns_t =
+        std::array<boost::signals2::scoped_connection, sizeof...(Members)>;
+    
+    observable_on_change_conns_t observable_on_change_conns;
     
     template <typename>
     friend class observable::scoped_on_change_t;

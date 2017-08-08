@@ -299,7 +299,7 @@ struct vector
     boost::signals2::connection on_value_change(F&& f)
     { return _on_value_change.connect(std::forward<F>(f)); }
     
-    const Model& model() const noexcept
+    const Model& get() const noexcept
     { return *_model; }
     
     Model* _model;
@@ -326,14 +326,13 @@ private:
                      it2observable.erase(it_ptr);
                      delete p;
                  });
-            auto& vec = *this;
+            auto& container = *this;
             observable->_on_change.connect(
-                [&vec, it](const typename reference::Model&)
+                [&container, it](const typename reference::Model&)
                 {
-                    vec._on_value_change(vec.model(), it);
-                    vec._on_change(vec.model());
-                });
-                
+                    container._on_value_change(container.get(), it);
+                    container._on_change(container.get());
+                });                
             it2observable[&*it] = observable;
         }
         return observable;

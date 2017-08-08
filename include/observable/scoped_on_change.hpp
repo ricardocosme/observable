@@ -20,7 +20,7 @@ public:
     
     ~scoped_on_change_t()
     {
-        _observable._on_change(_observable.model());
+        _observable._on_change(_observable.get());
         _observable._under_transaction = false;
     }
 };

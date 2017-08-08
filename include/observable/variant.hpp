@@ -66,7 +66,7 @@ struct variant
         _on_change(*_model);
     }
     
-    const Model& model() const noexcept
+    const Model& get() const noexcept
     { return *_model; }
     
     template<typename Visitor>
