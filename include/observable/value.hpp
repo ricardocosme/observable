@@ -10,29 +10,29 @@
 
 #include <boost/signals2.hpp>
 
-namespace observable { namespace member {
+namespace observable { 
             
 template<typename ValueType>
-struct value_impl
+struct value
 {
     using Model = ValueType;
 
-    value_impl() = default;
+    value() = default;
     
-    value_impl(Model& value)
+    value(Model& value)
         : _value(&value)
     {
     }
 
     //noexcept to variant assignment?
-    value_impl(value_impl&& rhs) noexcept
+    value(value&& rhs) noexcept
         : _value(rhs._value)
         , _on_change(std::move(rhs._on_change))
     {
     }
 
     //noexcept to variant assignment?
-    value_impl& operator=(value_impl&& rhs) noexcept
+    value& operator=(value&& rhs) noexcept
     {
         _value = rhs._value;
         _on_change = std::move(rhs._on_change);
@@ -40,7 +40,7 @@ struct value_impl
     }
 
     template<typename T>
-    value_impl& operator=(T&& o)
+    value& operator=(T&& o)
     {
         set(std::forward<T>(o));
         return *this;
@@ -65,4 +65,4 @@ struct value_impl
     boost::signals2::signal<void(const Model&)> _on_change;
 };
     
-}}
+}

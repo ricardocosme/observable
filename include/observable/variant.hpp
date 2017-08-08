@@ -10,13 +10,8 @@
 
 #include <boost/signals2.hpp>
 #include <boost/variant.hpp>
-#include <boost/fusion/container/generation/make_map.hpp>
-#include <boost/mpl/map.hpp>
-#include <boost/mpl/insert.hpp>
-#include <boost/mpl/iter_fold.hpp>
-#include <boost/mpl/fold.hpp>
 
-namespace observable { namespace member {
+namespace observable { 
 
 template<typename ObservableVariant>
 struct set_variant_t
@@ -38,7 +33,7 @@ struct set_variant_t
 };
     
 template<typename Model_>
-struct variant_impl
+struct variant
 {
     using Model = Model_;
     using types = typename Model::types;
@@ -49,12 +44,12 @@ struct variant_impl
         >::type
     >::type;
 
-    variant_impl(Model& value)
+    variant(Model& value)
         : _model(&value)
     {}
 
     template<typename T>
-    variant_impl& operator=(T&& o)
+    variant& operator=(T&& o)
     {
         set(std::forward<T>(o));
         return *this;
@@ -91,4 +86,4 @@ struct variant_impl
     bool _under_transaction{false};
 };
     
-    }}
+}

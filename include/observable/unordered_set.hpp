@@ -8,16 +8,30 @@
 
 #include <boost/signals2.hpp>
 
-namespace observable { namespace member {
+namespace observable { 
 
 template<typename Model_>
-struct unordered_set_impl
+struct unordered_set
 {
     using Model = Model_;
+
+    using hasher = typename Model::hasher;
+    using key_equal = typename Model::key_equal;
+    using key_type = typename Model::key_type;
+    using value_type = typename Model::value_type;
+    using reference = typename Model::reference;
+    using const_reference = typename Model::const_reference;
+    using pointer = typename Model::pointer;
+    using const_pointer = typename Model::const_pointer;
+    using iterator = typename Model::iterator;
+    using const_iterator = typename Model::const_iterator;
+    using size_type = typename Model::size_type;
+    using difference_type = typename Model::difference_type;
+    using allocator_type = typename Model::allocator_type;
     
-    unordered_set_impl() = default;
+    unordered_set() = default;
     
-    unordered_set_impl(Model& value)
+    unordered_set(Model& value)
         : _model(&value)
     {}
     
@@ -224,4 +238,4 @@ struct unordered_set_impl
         _on_change;
 };
     
-}}
+}

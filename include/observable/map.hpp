@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include "observable/member/value.hpp"
-#include "observable/member/variant.hpp"
 #include "observable/types.hpp"
 
 #include <boost/signals2.hpp>
@@ -16,7 +14,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace observable { namespace member {
+namespace observable { 
 
 template<typename Model>    
 class map_iterator
@@ -62,27 +60,38 @@ private:
 };
 
 template<typename Model_>
-struct map_impl
+struct map
 {
     using Model = Model_;
-    
-    using reference = observable_of_t<typename Model::mapped_type>;
-    
-    using iterator = map_iterator<map_impl<Model>>;
-    using difference_type = typename Model::difference_type;
 
-    map_impl() = default;
+    using key_type = typename Model::key_type;
+    using mapped_type = typename Model::mapped_type;
+    using value_type = typename Model::value_type;
+    using key_compare = typename Model::key_compare;
+    using reference = observable_of_t<typename Model::mapped_type>;
+    using const_reference = typename Model::const_reference;
+    using pointer = reference*;
+    using const_pointer = typename Model::const_pointer;
+    using iterator = map_iterator<map<Model>>;
+    using reverse_iterator = boost::reverse_iterator<iterator>;
+    using const_iterator = typename Model::const_iterator;
+    using const_reverse_iterator = typename Model::const_reverse_iterator;
+    using size_type = typename Model::size_type;
+    using difference_type = typename Model::difference_type;
+    using allocator_type = typename Model::allocator_type;
+
+    map() = default;
     
-    map_impl(Model& value)
+    map(Model& value)
         : _model(&value)
     {}
     
     iterator begin() noexcept
     { return iterator(*this, _model->begin()); }
 
-    boost::reverse_iterator<iterator> rbegin() noexcept
+    reverse_iterator rbegin() noexcept
     {
-        return boost::reverse_iterator<iterator>
+        return reverse_iterator
             (iterator(*this, _model->end()));
     }
     
@@ -95,9 +104,9 @@ struct map_impl
     iterator end() noexcept
     { return iterator(*this, _model->end()); }
     
-    boost::reverse_iterator<iterator> rend() noexcept
+    reverse_iterator rend() noexcept
     {
-        return boost::reverse_iterator<iterator>
+        return reverse_iterator
             (iterator(*this, _model->begin()));
     }
     
@@ -124,7 +133,8 @@ struct map_impl
         return get_reference(it);
     }
     
-    const typename Model::mapped_type& at(const typename Model::key_type& key) const
+    const typename Model::mapped_type&
+    at(const typename Model::key_type& key) const
     { return _model->at(key); }
     
     std::shared_ptr<reference> operator[](const typename Model::key_type& key)
@@ -284,7 +294,8 @@ struct map_impl
     (const typename Model::key_type& key)
     {
         auto p = _model->equal_range(key);
-        return std::make_pair(iterator(*this, p.first), iterator(*this, p.second));
+        return std::make_pair(iterator(*this, p.first),
+                              iterator(*this, p.second));
     }
     
     std::pair<typename Model::const_iterator,
@@ -346,7 +357,7 @@ private:
         }
         return observable;
     }
-    friend class map_iterator<map_impl<Model>>;
+    friend class map_iterator<map<Model>>;
 };
     
-}}
+}

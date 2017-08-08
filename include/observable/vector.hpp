@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "observable/member/value.hpp"
 #include "observable/types.hpp"
 
 #include <boost/signals2.hpp>
@@ -15,7 +14,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace observable { namespace member {
+namespace observable { 
 
 template<typename Observable>    
 class vector_iterator
@@ -47,27 +46,35 @@ private:
 };
             
 template<typename Model_>
-struct vector_impl
+struct vector
 {
     using Model = Model_;
 
-    using reference = observable_of_t<typename Model::value_type>;
-    
-    using iterator = vector_iterator<vector_impl<Model>>;
+    using value_type = typename Model::value_type;
+    using reference = observable_of_t<typename Model::value_type>;    
+    using const_reference = typename Model::const_reference;
+    using pointer = reference*;
+    using const_pointer = typename Model::const_pointer;
+    using iterator = vector_iterator<vector<Model>>;
+    using reverse_iterator = boost::reverse_iterator<iterator>;
+    using const_iterator = typename Model::const_iterator;
+    using const_reverse_iterator = typename Model::const_reverse_iterator;
+    using size_type = typename Model::size_type;
     using difference_type = typename Model::difference_type;
+    using allocator_type = typename Model::allocator_type;
 
-    vector_impl() = default;
+    vector() = default;
     
-    vector_impl(Model& value)
+    vector(Model& value)
         : _model(&value)
     {}
     
     iterator begin() noexcept
     { return iterator(*this, _model->begin()); }
 
-    boost::reverse_iterator<iterator> rbegin() noexcept
+    reverse_iterator rbegin() noexcept
     {
-        return boost::reverse_iterator<iterator>
+        return reverse_iterator
             (iterator(*this, _model->end()));
     }
     
@@ -80,9 +87,9 @@ struct vector_impl
     iterator end() noexcept
     { return iterator(*this, _model->end()); }
     
-    boost::reverse_iterator<iterator> rend() noexcept
+    reverse_iterator rend() noexcept
     {
-        return boost::reverse_iterator<iterator>
+        return reverse_iterator
             (iterator(*this, _model->begin()));
     }
     
@@ -185,7 +192,8 @@ struct vector_impl
     }
     
     template <typename Container, typename ConstIterator>
-    typename Container::iterator remove_constness(Container& c, ConstIterator it)
+    typename Container::iterator remove_constness(Container& c,
+                                                  ConstIterator it)
     {
         return c.erase(it, it);
     }
@@ -330,6 +338,7 @@ private:
         }
         return observable;
     }
-    friend class vector_iterator<vector_impl<Model>>;
+    friend class vector_iterator<vector<Model>>;
 };
-}}
+    
+}

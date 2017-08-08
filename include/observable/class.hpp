@@ -7,11 +7,11 @@
 #pragma once
 
 #include "observable/traits.hpp"
-#include "observable/member/value.hpp"
-#include "observable/member/unordered_set.hpp"
-#include "observable/member/map.hpp"
-#include "observable/member/variant.hpp"
-#include "observable/member/vector.hpp"
+#include "observable/value.hpp"
+#include "observable/unordered_set.hpp"
+#include "observable/map.hpp"
+#include "observable/variant.hpp"
+#include "observable/vector.hpp"
 #include <boost/signals2.hpp>
 #include <boost/fusion/include/map.hpp>
 #include <boost/fusion/include/at_key.hpp>
@@ -50,20 +50,20 @@ template<typename Model>
 struct observable_of {
     using type = typename std::conditional<
         is_vector<Model>::value,
-        typename member::vector_impl<Model>,
+        vector<Model>,
         typename std::conditional<
             is_class<Model>::value,
             typename is_class<Model>::type,
             typename std::conditional<
                 is_variant<Model>::value,
-                member::variant_impl<Model>,
+                variant<Model>,
                 typename std::conditional<
                     is_unordered_set<Model>::value,
-                    member::unordered_set_impl<Model>,
+                    unordered_set<Model>,
                     typename std::conditional<
                         is_map<Model>::value,
-                        member::map_impl<Model>,
-                        typename member::value_impl<Model>
+                        map<Model>,
+                        value<Model>
                     >::type
                 >::type
             >::type
@@ -153,18 +153,25 @@ private:
     boost::signals2::signal<void(const Model&)> _on_change;
     bool _under_transaction{false};
     std::vector<boost::signals2::scoped_connection> sc;
+    
     template <typename>
     friend class observable::scoped_on_change_t;
+    
     template <typename>
-    friend struct observable::member::map_impl;
+    friend struct observable::map;
+    
     template <typename>
-    friend struct observable::member::value_impl;
+    friend struct observable::value;
+    
     template <typename>
-    friend struct observable::member::variant_impl;
+    friend struct observable::variant;
+    
     template <typename>
-    friend struct observable::member::vector_impl;
+    friend struct observable::vector;
+    
     template <typename>
-    friend struct observable::member::unordered_set_impl;
+    friend struct observable::unordered_set;
+    
     template<typename>
     friend struct set_on_change;
 };
