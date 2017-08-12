@@ -29,6 +29,7 @@ run test/variant_of_class.cpp ;
 run test/vector.cpp ;
 run test/vector_of_class.cpp ;
 run test/vector_of_vector.cpp ;
+run test/setter_value.cpp ;
 
 install stage
   : simple

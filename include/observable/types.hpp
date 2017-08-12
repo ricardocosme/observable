@@ -17,5 +17,6 @@ using observable_of_t = typename observable_of<T>::type;
 }
 
 template<typename T>
-observable::observable_of_t<T> observable_factory(T& o)
-{ return o; }
+observable::observable_of_t<typename std::decay<T>::type>
+observable_factory(T&& o)
+{ return std::forward<T>(o); }

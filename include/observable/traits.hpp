@@ -10,6 +10,7 @@
 #include <vector>
 #include <unordered_set>
 #include <boost/variant.hpp>
+#include <observable/setter_value.hpp>
 
 namespace observable {
     
@@ -44,5 +45,12 @@ struct is_variant : std::false_type {};
 template<BOOST_VARIANT_ENUM_PARAMS(typename T)>
 struct is_variant<boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>>
     : std::true_type {};
+
+template<typename T>
+struct is_set_get : std::false_type {};
+    
+template<typename T>
+struct is_set_get<set_get<T>> : std::true_type {};
+    
 }
 

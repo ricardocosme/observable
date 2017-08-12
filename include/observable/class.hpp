@@ -12,6 +12,7 @@
 #include "observable/map.hpp"
 #include "observable/variant.hpp"
 #include "observable/vector.hpp"
+#include "observable/setter_value.hpp"
 #include <boost/signals2.hpp>
 #include <boost/fusion/include/map.hpp>
 #include <boost/fusion/include/at_key.hpp>
@@ -64,7 +65,11 @@ struct observable_of {
                     typename std::conditional<
                         is_map<Model>::value,
                         map<Model>,
-                        value<Model>
+                        typename std::conditional<
+                            is_set_get<Model>::value,
+                            setter_value<Model>,
+                            value<Model>
+                        >::type
                     >::type
                 >::type
             >::type
@@ -84,16 +89,17 @@ public:
         >...>;
 
     class_() = default;
-    
+
+    template<typename... Observeds>
     class_(Model& model,
-           typename Members::first_type&... args)
+           Observeds&&... observeds)
         : _model(&model)
         , _tag2observable
           (boost::fusion::pair<
            typename Members::second_type,
-           observable_of_t<typename Members::first_type>>
-           (observable_of_t<typename Members::first_type>
-            (observable_factory(args)))...)
+           observable_of_t<typename std::decay<Observeds>::type>>
+           (observable_of_t<typename std::decay<Observeds>::type>
+            (observable_factory(std::forward<Observeds>(observeds))))...)
     {
         set_on_change<class_<Model_, Members...>> visitor{*this};
         for_each(_tag2observable, visitor);
