@@ -29,7 +29,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -42,7 +42,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = false;
                 });
@@ -55,7 +55,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -85,7 +85,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -99,7 +99,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -112,7 +112,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -126,7 +126,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -139,7 +139,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -153,7 +153,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -184,7 +184,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_insert(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -195,11 +195,14 @@ int main()
     
     //erase
     {
+        foo.set.clear();
+        foo.set.emplace("abc");
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_erase(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
+                    assert(v == "abc");
                     ok = true;
                 });
         obs.get<set>().erase(foo.set.begin());
@@ -212,7 +215,7 @@ int main()
         obs.get<set>().emplace("ghi");
         boost::signals2::scoped_connection c =
             obs.get<set>().on_erase(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -228,7 +231,7 @@ int main()
         obs.get<set>().emplace("ghi");
         boost::signals2::scoped_connection c =
             obs.get<set>().on_erase(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -244,7 +247,7 @@ int main()
         obs.get<set>().emplace("ghi");
         boost::signals2::scoped_connection c =
             obs.get<set>().on_erase(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = false;
                 });
@@ -257,7 +260,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.get<set>().on_erase(
-                [&ok](const set_t&)
+                [&ok](const set_t&, set_t::value_type, set_t::const_iterator)
                 {
                     ok = true;
                 });

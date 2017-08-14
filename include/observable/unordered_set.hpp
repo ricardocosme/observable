@@ -59,23 +59,24 @@ struct unordered_set
     void clear() noexcept
     {
         _model->clear();
-        _on_erase(*_model);
+        _on_erase(*_model, value_type{}, typename Model::const_iterator{});
         _on_change(*_model);
     }
     
     typename Model::iterator erase(typename Model::const_iterator pos)        
     {
+        auto e = *pos;
         auto it = _model->erase(pos);
-        _on_erase(*_model);
+        _on_erase(*_model, std::move(e), it);
         _on_change(*_model);
         return it;
     }
     
     typename Model::iterator erase(typename Model::const_iterator first,
-                                  typename Model::const_iterator last)        
+                                   typename Model::const_iterator last)        
     {
         auto it = _model->erase(first, last);
-        _on_erase(*_model);
+        _on_erase(*_model, value_type{}, it);
         _on_change(*_model);
         return it;
     }
@@ -85,7 +86,8 @@ struct unordered_set
         auto n = _model->erase(key);
         if (n > 0)
         {
-            _on_erase(*_model);
+            //TODO:on_erase
+            _on_erase(*_model, value_type{}, const_iterator{});
             _on_change(*_model);
         }
         return n;
@@ -97,7 +99,7 @@ struct unordered_set
         auto ret = _model->emplace(std::forward<Args>(args)...);
         if (ret.second)
         {
-            _on_insert(*_model);
+            _on_insert(*_model, ret.first);
             _on_change(*_model);
         }
         return ret;
@@ -111,7 +113,7 @@ struct unordered_set
         auto it = _model->emplace_hint(hint, std::forward<Args>(args)...);
         if (_model->size() != before_size)
         {
-            _on_insert(*_model);
+            _on_insert(*_model, it);
             _on_change(*_model);
         }
         return it;
@@ -123,7 +125,7 @@ struct unordered_set
         auto ret = _model->insert(value);
         if (ret.second)
         {
-            _on_insert(*_model);
+            _on_insert(*_model, ret.first);
             _on_change(*_model);
         }
         return ret;        
@@ -135,7 +137,7 @@ struct unordered_set
         auto ret = _model->insert(std::move(value));
         if (ret.second)
         {
-            _on_insert(*_model);
+            _on_insert(*_model, ret.first);
             _on_change(*_model);
         }
         return ret;        
@@ -149,7 +151,7 @@ struct unordered_set
         auto it = _model->insert(hint, value);
         if (_model->size() != before_size)
         {
-            _on_insert(*_model);
+            _on_insert(*_model, it);
             _on_change(*_model);
         }
         return it;
@@ -163,7 +165,7 @@ struct unordered_set
         auto it = _model->insert(hint, std::move(value));
         if (_model->size() != before_size)
         {
-            _on_insert(*_model);
+            _on_insert(*_model, it);
             _on_change(*_model);
         }
         return it;
@@ -176,7 +178,7 @@ struct unordered_set
         _model->insert(first, last);
         if (_model->size() != before_size)
         {
-            _on_insert(*_model);
+            _on_insert(*_model, typename Model::const_iterator{}); //TODO
             _on_change(*_model);
         }
     }
@@ -190,8 +192,8 @@ struct unordered_set
     {
         _model->swap(other);
         //TODO: check?
-        _on_insert(*_model);
-        _on_erase(*_model);
+        _on_insert(*_model, typename Model::const_iterator{});
+        _on_erase(*_model, value_type{}, typename Model::const_iterator{});
         _on_change(*_model);
     }
 
@@ -234,8 +236,13 @@ struct unordered_set
     
     Model* _model;
     
-    boost::signals2::signal<void(const Model&)> _on_erase, _on_insert,
-        _on_change;
+    boost::signals2::signal<void(const Model&, typename Model::const_iterator)>
+    _on_insert, _on_value_change;
+    
+    boost::signals2::signal<void(const Model&, value_type, typename Model::const_iterator)>
+    _on_erase;
+    
+    boost::signals2::signal<void(const Model&)> _on_change;
 };
     
 }

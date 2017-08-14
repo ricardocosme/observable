@@ -21,7 +21,7 @@ int main()
         {std::cout << "skills has changed" << std::endl;});
     
     person.get<kids>().on_insert(
-        [](const kids_t& skills)
+        [](const kids_t& skills, const kids_t::const_iterator)
         {std::cout << "kids has inserted" << std::endl;});
     
     person.assign<name>("MARIA");
