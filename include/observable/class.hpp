@@ -8,6 +8,7 @@
 
 #include "observable/traits.hpp"
 #include "observable/value.hpp"
+#include "observable/unordered_map.hpp"
 #include "observable/unordered_set.hpp"
 #include "observable/map.hpp"
 #include "observable/variant.hpp"
@@ -66,9 +67,13 @@ struct observable_of {
                         is_map<Model>::value,
                         map<Model>,
                         typename std::conditional<
-                            is_set_get<Model>::value,
-                            setter_value<Model>,
-                            value<Model>
+                            is_unordered_map<Model>::value,
+                            unordered_map<Model>,
+                            typename std::conditional<
+                                is_set_get<Model>::value,
+                                setter_value<Model>,
+                                value<Model>
+                            >::type
                         >::type
                     >::type
                 >::type
@@ -173,6 +178,9 @@ private:
     
     template <typename>
     friend struct observable::vector;
+    
+    template <typename>
+    friend struct observable::unordered_map;
     
     template <typename>
     friend struct observable::unordered_set;

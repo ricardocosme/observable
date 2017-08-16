@@ -8,6 +8,7 @@
 
 #include <map>
 #include <vector>
+#include <unordered_map>
 #include <unordered_set>
 #include <boost/variant.hpp>
 #include <observable/setter_value.hpp>
@@ -23,6 +24,14 @@ struct is_map : std::false_type {};
 //?    
 template<typename Key, typename T>
 struct is_map<std::map<Key, T>>
+    : std::true_type {};
+    
+template<typename Model>
+struct is_unordered_map : std::false_type {};
+
+//?    
+template<typename Key, typename T>
+struct is_unordered_map<std::unordered_map<Key, T>>
     : std::true_type {};
     
 template<typename T>
