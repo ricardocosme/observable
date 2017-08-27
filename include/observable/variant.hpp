@@ -59,8 +59,8 @@ struct variant
 
     variant() = default;
     
-    variant(Observed& value)
-        : _observed(&value)
+    variant(Observed& observed)
+        : _observed(&observed)
     {}
 
     template<typename T>

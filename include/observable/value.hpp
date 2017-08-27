@@ -17,8 +17,8 @@ struct value
 
     value() = default;
     
-    value(Observed& value)
-        : _observed(&value)
+    value(Observed& observed)
+        : _observed(&observed)
     {
     }
 

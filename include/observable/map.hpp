@@ -94,8 +94,8 @@ struct map
 
     map() = default;
     
-    map(Observed& value)
-        : _observed(&value)
+    map(Observed& observed)
+        : _observed(&observed)
     {}
     
     iterator begin() noexcept
@@ -169,6 +169,7 @@ struct map
     
     void clear() noexcept
     {
+        _before_erase(*_observed, _observed->cend());
         _observed->clear();
         _on_erase(*_observed, const_iterator{});
         _on_change(*_observed);
@@ -176,6 +177,7 @@ struct map
     
     iterator erase(const_iterator pos)        
     {
+        _before_erase(*_observed, pos);
         auto it = _observed->erase(pos);
         _on_erase(*_observed, it);
         _on_change(*_observed);
@@ -185,6 +187,7 @@ struct map
     iterator erase(const_iterator first,
                    const_iterator last)        
     {
+        _before_erase(*_observed, first);
         auto it = _observed->erase(first, last);
         _on_erase(*_observed, it);
         _on_change(*_observed);
@@ -195,6 +198,7 @@ struct map
     {
         auto rng = _observed->equal_range(key);
         auto before_size = _observed->size();
+        _before_erase(*_observed, rng.first);
         erase(rng.first, rng.second);
         auto n = before_size - _observed->size();
         if (n > 0)
@@ -284,6 +288,7 @@ struct map
     
     void swap(Observed& other)
     {
+        _before_erase(*_observed, _observed->cend());
         _observed->swap(other);
         //TODO: check?
         _on_insert(*_observed, const_iterator{});
@@ -316,6 +321,10 @@ struct map
     { return _observed->equal_range(key); }
     
     template<typename F>
+    boost::signals2::connection before_erase(F&& f)
+    { return _before_erase.connect(std::forward<F>(f)); }
+    
+    template<typename F>
     boost::signals2::connection on_erase(F&& f)
     { return _on_erase.connect(std::forward<F>(f)); }
     
@@ -337,7 +346,7 @@ struct map
     Observed* _observed;
     
     boost::signals2::signal<void(const Observed&, const_iterator)>
-    _on_erase, _on_insert, _on_value_change;
+    _on_erase, _on_insert, _on_value_change, _before_erase;
     
     boost::signals2::signal<void(const Observed&)> _on_change;
     

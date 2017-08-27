@@ -46,8 +46,8 @@ struct unordered_set
     
     unordered_set() = default;
     
-    unordered_set(Observed& value)
-        : _observed(&value)
+    unordered_set(Observed& observed)
+        : _observed(&observed)
     {}
     
     iterator begin() noexcept

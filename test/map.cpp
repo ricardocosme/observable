@@ -187,9 +187,20 @@ int main()
         map.emplace(2, "abc");
         map.emplace(3, "def");
         bool called{false};
-        obs.on_erase([&called](const map_t&, map_t::const_iterator)
-                                { called = true; });
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+        obs.before_erase([&before_called](const map_t& c,
+                                          map_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(c.end() == it);
+                         });
+        boost::signals2::scoped_connection c2 =
+        obs.on_erase([&called](const map_t&,
+                               map_t::const_iterator)
+                     { called = true; });
         obs.clear();
+        assert(before_called);
         assert(called);
         assert(obs.empty());
     }
@@ -200,9 +211,20 @@ int main()
         map.emplace(2, "abc");
         map.emplace(3, "def");
         bool called{false};
-        obs.on_erase([&called](const map_t&, map_t::const_iterator)
-                                { called = true; });
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+        obs.before_erase([&before_called](const map_t& c,
+                                          map_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert("abc" == it->second);
+                         });
+        boost::signals2::scoped_connection c2 =
+        obs.on_erase([&called](const map_t&,
+                               map_t::const_iterator)
+                     { called = true; });
         obs.erase(obs.cbegin());
+        assert(before_called);
         assert(called);
         assert(obs.size() == 1);
     }
@@ -213,9 +235,20 @@ int main()
         map.emplace(2, "abc");
         map.emplace(3, "def");
         bool called{false};
-        obs.on_erase([&called](const map_t&, map_t::const_iterator)
-                                { called = true; });
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+        obs.before_erase([&before_called](const map_t& c,
+                                          map_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(c.begin() == it);
+                         });
+        boost::signals2::scoped_connection c2 =
+        obs.on_erase([&called](const map_t&,
+                               map_t::const_iterator)
+                     { called = true; });
         obs.erase(obs.cbegin(), obs.cend());
+        assert(before_called);
         assert(called);
         assert(obs.empty());
     }
@@ -226,6 +259,15 @@ int main()
         map.emplace(2, "abc");
         map.emplace(3, "def");
         bool called{false};
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+        obs.before_erase([&before_called](const map_t& c,
+                                          map_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert("abc" == it->second);
+                         });
+        boost::signals2::scoped_connection c2 =
         obs.on_erase([&called](const map_t&, map_t::const_iterator)
                                 { called = true; });
         obs.erase(2);

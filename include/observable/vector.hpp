@@ -77,8 +77,8 @@ struct vector
 
     vector() = default;
     
-    vector(Observed& value)
-        : _observed(&value)
+    vector(Observed& observed)
+        : _observed(&observed)
     {}
     
     iterator begin() noexcept
@@ -170,6 +170,7 @@ struct vector
     
     void clear() noexcept
     {
+        _before_erase(*_observed, _observed->cend());
         _observed->clear();
         _on_erase(*_observed, const_iterator{});
         _on_change(*_observed);
@@ -178,6 +179,7 @@ struct vector
     //GCC 4.8.2 uses iterator and not const_iterator for the first argument
     iterator erase(iterator pos)        
     {
+        _before_erase(*_observed, pos.base());
         auto it = _observed->erase(pos.base());
         _on_erase(*_observed, it);
         _on_change(*_observed);
@@ -187,6 +189,8 @@ struct vector
     //GCC 4.8.2 uses iterator and not const_iterator for the first argument
     iterator erase(iterator first, iterator last)        
     {
+        //TODO range?
+        _before_erase(*_observed, first.base());
         auto it = _observed->erase(first.base(), last.base());
         _on_erase(*_observed, it);
         _on_change(*_observed);
@@ -279,6 +283,7 @@ struct vector
     
     void pop_back()
     {
+        _before_erase(*_observed, _observed->rbegin().base());
         _observed->pop_back();
         _on_erase(*_observed, const_iterator{});
         _on_change(*_observed);
@@ -286,6 +291,7 @@ struct vector
     
     void swap(Observed& other)
     {
+        _before_erase(*_observed, _observed->cend());
         _observed->swap(other);
         //TODO: check?
         _on_insert(*_observed, const_iterator{});
@@ -294,6 +300,10 @@ struct vector
     }
 
     //TODO resize
+    
+    template<typename F>
+    boost::signals2::connection before_erase(F&& f)
+    { return _before_erase.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_erase(F&& f)
@@ -317,7 +327,7 @@ struct vector
     Observed* _observed;
     
     boost::signals2::signal<void(const Observed&, const_iterator)>
-    _on_erase, _on_insert, _on_value_change;
+    _on_erase, _on_insert, _on_value_change, _before_erase;
     
     boost::signals2::signal<void(const Observed&)> _on_change;
     

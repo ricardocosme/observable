@@ -95,8 +95,8 @@ struct unordered_map
 
     unordered_map() = default;
     
-    unordered_map(Observed& value)
-        : _observed(&value)
+    unordered_map(Observed& observed)
+        : _observed(&observed)
     {}
     
     iterator begin() noexcept
@@ -208,8 +208,8 @@ struct unordered_map
     iterator erase(const_iterator pos)        
     {
         auto e = *pos;
+        _before_erase(*_observed, pos);
         auto it = _observed->erase(pos);
-        _before_erase(*_observed, it);
         _on_erase(*_observed, std::move(e), it);
         _on_change(*_observed);
         return iterator(*this, it);

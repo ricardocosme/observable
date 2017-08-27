@@ -217,9 +217,20 @@ int main()
         vec.emplace(it, "abc");
         vec.emplace(++it, "def");
         bool called{false};
-        obs.on_erase([&called](const vector_t&, vector_t::const_iterator)
-                                   { called = true; });
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+        obs.before_erase([&before_called](const vector_t& c,
+                                          vector_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(c.end() == it);
+                         });
+        boost::signals2::scoped_connection c2 =
+        obs.on_erase([&called](const vector_t&,
+                               vector_t::const_iterator)
+                     { called = true; });
         obs.clear();
+        assert(before_called);
         assert(called);
         assert(obs.empty());
     }
@@ -252,9 +263,19 @@ int main()
         vec.emplace(it, "abc");
         vec.emplace(++it, "def");
         bool called{false};
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+        obs.before_erase([&before_called](const vector_t& c,
+                                          vector_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(*it == "abc");
+                         });
+        boost::signals2::scoped_connection c2 =
         obs.on_erase([&called](const vector_t&, vector_t::const_iterator)
                                    { called = true; });
         obs.erase(obs.begin());
+        assert(before_called);
         assert(called);
         assert(obs.size() == 1);
     }
@@ -266,10 +287,20 @@ int main()
         vec.emplace(it, "abc");
         vec.emplace(++it, "def");
         bool called{false};
-        obs.on_erase([&called](const vector_t&, vector_t::const_iterator)
-                                   { called = true; });
-        obs.erase(obs.begin(),
-                                obs.end());
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+        obs.before_erase([&before_called](const vector_t& c,
+                                          vector_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(c.begin() == it);
+                         });
+        boost::signals2::scoped_connection c2 =
+        obs.on_erase([&called](const vector_t&,
+                               vector_t::const_iterator)
+                     { called = true; });
+        obs.erase(obs.begin(), obs.end());
+        assert(before_called);
         assert(called);
         assert(obs.empty());
     }
@@ -328,14 +359,23 @@ int main()
     {
         vec.clear();
         bool called{false};
+        bool before_called{false};
         obs.push_back("abc");
-        boost::signals2::scoped_connection c =
+        boost::signals2::scoped_connection c1 =
+        obs.before_erase([&before_called](const vector_t& c,
+                                          vector_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(*it == "abc");
+                         });
+        boost::signals2::scoped_connection c2 =
             obs.on_erase([&called](const vector_t&,
                                                   vector_t::const_iterator it)
                                     {
                                         called = true;
                                     });
         obs.pop_back();
+        assert(before_called);
         assert(called);
         assert(obs.empty());
     }
