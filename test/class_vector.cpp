@@ -1,4 +1,5 @@
 #include "observable/class.hpp"
+#include "observable/vector.hpp"
 
 #include <array>
 #include <iostream>

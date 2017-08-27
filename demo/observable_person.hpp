@@ -9,6 +9,8 @@
 #include "person.hpp"
 
 #include <observable/class.hpp>
+#include <observable/unordered_set.hpp>
+#include <observable/map.hpp>
 #include <observable/observable_class_gen.hpp>
 
 #include <cstddef>

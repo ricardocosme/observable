@@ -1,4 +1,5 @@
 #include "observable/class.hpp"
+#include "observable/unordered_map.hpp"
 
 #include <array>
 #include <iostream>

@@ -1,4 +1,5 @@
 #include "observable/class.hpp"
+#include "observable/variant.hpp"
 
 #include <array>
 #include <iostream>

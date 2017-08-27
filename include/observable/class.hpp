@@ -7,25 +7,34 @@
 #pragma once
 
 #include "observable/traits.hpp"
-#include "observable/value.hpp"
-#include "observable/unordered_map.hpp"
-#include "observable/unordered_set.hpp"
-#include "observable/map.hpp"
-#include "observable/variant.hpp"
-#include "observable/vector.hpp"
-#include "observable/setter_value.hpp"
-#include <boost/signals2.hpp>
-#include <boost/fusion/include/map.hpp>
+#include "observable/types.hpp"
+
 #include <boost/fusion/include/at_key.hpp>
-#include <boost/fusion/include/make_map.hpp>
-#include <boost/fusion/include/pair.hpp>
 #include <boost/fusion/include/for_each.hpp>
+#include <boost/fusion/include/map.hpp>
 #include <boost/fusion/include/move.hpp>
-#include <boost/fusion/sequence/intrinsic/at_key.hpp>
+#include <boost/fusion/include/pair.hpp>
+#include <boost/signals2.hpp>
+
 #include <array>
 #include <type_traits>
 
 namespace observable {
+
+template<typename>
+struct map;
+    
+template<typename>
+struct unordered_map;
+    
+template<typename>
+struct unordered_set;
+    
+template<typename>
+struct variant;
+    
+template<typename>
+struct vector;
 
 template<typename Parent>    
 struct set_on_change
@@ -144,22 +153,22 @@ private:
     
     observable_on_change_conns_t observable_on_change_conns;
     
-    template <typename>
+    template<typename>
     friend struct observable::map;
     
-    template <typename>
+    template<typename>
     friend struct observable::value;
     
-    template <typename>
+    template<typename>
     friend struct observable::variant;
     
-    template <typename>
+    template<typename>
     friend struct observable::vector;
     
-    template <typename>
+    template<typename>
     friend struct observable::unordered_map;
     
-    template <typename>
+    template<typename>
     friend struct observable::unordered_set;
     
     template<typename>

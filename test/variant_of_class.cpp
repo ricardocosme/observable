@@ -1,4 +1,5 @@
 #include "observable/class.hpp"
+#include "observable/variant.hpp"
 #include "observable/observable_is_class.hpp"
 
 struct foo_t{ int i; };
