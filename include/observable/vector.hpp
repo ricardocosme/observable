@@ -28,21 +28,20 @@ class vector_iterator
     >
 {
 public:
-    vector_iterator() : vector_iterator::iterator_adaptor_()
-    {}
+    vector_iterator() = default;
 
     explicit vector_iterator
     (Observable& observable, const typename Observable::Model::iterator& it)
         : vector_iterator::iterator_adaptor_(it)
-        , _observable(observable)
+        , _observable(&observable)
     {}
 private:
     friend class boost::iterator_core_access;
     
     std::shared_ptr<typename Observable::reference> dereference() const
-    { return _observable.get_reference(this->base_reference()); }
+    { return _observable->get_reference(this->base_reference()); }
     
-    Observable& _observable;    
+    Observable* _observable{nullptr};    
 };
             
 template<typename Model_>

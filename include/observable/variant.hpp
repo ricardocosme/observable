@@ -44,6 +44,8 @@ struct variant
         >::type
     >::type;
 
+    variant() = default;
+    
     variant(Model& value)
         : _model(&value)
     {}

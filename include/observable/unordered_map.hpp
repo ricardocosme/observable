@@ -34,13 +34,12 @@ class unordered_map_iterator
     >
 {
 public:
-    unordered_map_iterator() : unordered_map_iterator::iterator_adaptor_()
-    {}
+    unordered_map_iterator() = default;
 
     explicit unordered_map_iterator
     (Model& model, const typename Model::Model::iterator& it)
         : unordered_map_iterator::iterator_adaptor_(it)
-        , _model(model)
+        , _model(&model)
     {}
 private:
     friend class boost::iterator_core_access;
@@ -54,9 +53,9 @@ private:
         auto it = this->base_reference();
         //TODO:lvalue ref?
         auto& p = *it;        
-        return std::make_pair(p.first, _model.get_reference(it));
+        return std::make_pair(p.first, _model->get_reference(it));
     }
-    Model& _model;    
+    Model* _model{nullptr};    
 };
 
 template<typename Model_>
@@ -110,8 +109,9 @@ struct unordered_map
 
     void clear() noexcept
     {
+        _before_erase(*_model, _model->cend());
         _model->clear();
-        _on_erase(*_model, value_type{}, typename Model::const_iterator{});
+        _on_erase(*_model, value_type{}, _model->cend());
         _on_change(*_model);
     }
     
@@ -196,6 +196,7 @@ struct unordered_map
     {
         auto e = *pos;
         auto it = _model->erase(pos);
+        _before_erase(*_model, it);
         _on_erase(*_model, std::move(e), it);
         _on_change(*_model);
         return iterator(*this, it);
@@ -204,6 +205,8 @@ struct unordered_map
     iterator erase(typename Model::const_iterator first,
                    typename Model::const_iterator last)        
     {
+        //TODO range?
+        _before_erase(*_model, first);
         auto it = _model->erase(first, last);
         _on_erase(*_model, value_type{}, it);
         _on_change(*_model);
@@ -216,6 +219,7 @@ struct unordered_map
         if(rng.first == _model->end()) return 0;
         auto e = *rng.first;
         auto before_size = _model->size();
+        _before_erase(*_model, rng.first);
         _model->erase(rng.first, rng.second);
         auto n = before_size - _model->size();
         if (n > 0)
@@ -228,6 +232,7 @@ struct unordered_map
     
     void swap(Model& other)
     {
+        _before_erase(*_model, _model->cend());
         _model->swap(other);
         //TODO: check?
         _on_insert(*_model, typename Model::const_iterator{});
@@ -290,6 +295,10 @@ struct unordered_map
     { return _model->equal_range(key); }
                         
     template<typename F>
+    boost::signals2::connection before_erase(F&& f)
+    { return _before_erase.connect(std::forward<F>(f)); }
+    
+    template<typename F>
     boost::signals2::connection on_erase(F&& f)
     { return _on_erase.connect(std::forward<F>(f)); }
     
@@ -311,7 +320,7 @@ struct unordered_map
     Model* _model;
     
     boost::signals2::signal<void(const Model&, typename Model::const_iterator)>
-    _on_insert, _on_value_change;
+    _on_insert, _on_value_change, _before_erase;
     
     boost::signals2::signal<void(const Model&, value_type, typename Model::const_iterator)>
     _on_erase;

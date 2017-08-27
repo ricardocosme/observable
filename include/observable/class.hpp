@@ -107,7 +107,7 @@ public:
             (observable_factory(std::forward<Observeds>(observeds))))...)
     {
         set_on_change<class_<Model_, Members...>> visitor{*this};
-        for_each(_tag2observable, visitor);
+        boost::fusion::for_each(_tag2observable, visitor);
     }
 
     class_(class_&& rhs) noexcept
@@ -116,7 +116,7 @@ public:
     {
         rhs.observable_on_change_conns.swap(observable_on_change_conns);
         set_on_change<class_<Model_, Members...>> visitor{*this};
-        for_each(rhs._tag2observable, visitor);
+        boost::fusion::for_each(rhs._tag2observable, visitor);
         boost::fusion::move(std::move(rhs._tag2observable), _tag2observable);        
     }
     
@@ -125,7 +125,7 @@ public:
         _model = rhs._model;
         rhs.observable_on_change_conns.swap(observable_on_change_conns);        
         set_on_change<class_<Model_, Members...>> visitor{*this};
-        for_each(rhs._tag2observable, visitor);
+        boost::fusion::for_each(rhs._tag2observable, visitor);
         boost::fusion::move(std::move(rhs._tag2observable), _tag2observable);
         _on_change = std::move(rhs._on_change);
         return *this;

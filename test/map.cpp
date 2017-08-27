@@ -24,6 +24,11 @@ int main()
     foo_t foo;
     obs_t obs(foo, foo.map);
 
+    //map_iterator default constructed
+    {
+        observable::observable_of_t<map_t>::iterator i;
+    }
+    
     //at fail
     {
         bool ok{false};

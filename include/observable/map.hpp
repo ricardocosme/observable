@@ -34,13 +34,12 @@ class map_iterator
     >
 {
 public:
-    map_iterator() : map_iterator::iterator_adaptor_()
-    {}
+    map_iterator() = default;
 
     explicit map_iterator
     (Model& model, const typename Model::Model::iterator& it)
         : map_iterator::iterator_adaptor_(it)
-        , _model(model)
+        , _model(&model)
     {}
 private:
     friend class boost::iterator_core_access;
@@ -54,9 +53,9 @@ private:
         auto it = this->base_reference();
         //TODO:lvalue ref?
         auto& p = *it;        
-        return std::make_pair(p.first, _model.get_reference(it));
+        return std::make_pair(p.first, _model->get_reference(it));
     }
-    Model& _model;    
+    Model* _model{nullptr};    
 };
 
 template<typename Model_>

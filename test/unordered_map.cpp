@@ -24,6 +24,11 @@ int main()
     foo_t foo;
     obs_t obs(foo, foo.map);
 
+    //map_iterator default constructed
+    {
+        observable::observable_of_t<map_t>::iterator i;
+    }
+    
     //at fail
     {
         bool ok{false};
@@ -192,22 +197,44 @@ int main()
         foo.map.emplace(2, "abc");
         foo.map.emplace(3, "def");
         bool called{false};
-        obs.get<map>().on_erase([&called](const map_t&, map_t::value_type, map_t::const_iterator)
-                                { called = true; });
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+            obs.get<map>().before_erase
+            ([&before_called](const map_t& m, map_t::const_iterator it)
+             {
+                 before_called = true;
+                 assert(m.end() == it);
+             });
+        boost::signals2::scoped_connection c2 =
+            obs.get<map>().on_erase
+            ([&called](const map_t&, map_t::value_type, map_t::const_iterator)
+             { called = true; });
         obs.get<map>().clear();
+        assert(before_called);
         assert(called);
         assert(obs.get<map>().empty());
     }
     
-     //erase()
+    //erase()
     {
         foo.map.clear();
         foo.map.emplace(2, "abc");
         foo.map.emplace(3, "def");
         bool called{false};
-        obs.get<map>().on_erase([&called](const map_t&, map_t::value_type, map_t::const_iterator)
-                                { called = true; });
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+            obs.get<map>().before_erase
+            ([&before_called](const map_t& m, map_t::const_iterator it)
+             {
+                 before_called = true;
+                 assert(it != m.end());
+             });
+        boost::signals2::scoped_connection c2 =
+            obs.get<map>().on_erase
+            ([&called](const map_t&, map_t::value_type, map_t::const_iterator)
+             { called = true; });
         obs.get<map>().erase(obs.get<map>().cbegin());
+        assert(before_called);
         assert(called);
         assert(obs.get<map>().size() == 1);
     }
@@ -218,9 +245,20 @@ int main()
         foo.map.emplace(2, "abc");
         foo.map.emplace(3, "def");
         bool called{false};
-        obs.get<map>().on_erase([&called](const map_t&, map_t::value_type, map_t::const_iterator)
-                                { called = true; });
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+            obs.get<map>().before_erase
+            ([&before_called](const map_t& m, map_t::const_iterator it)
+             {
+                 before_called = true;
+                 assert(it != m.end());
+             });
+        boost::signals2::scoped_connection c2 =
+            obs.get<map>().on_erase
+            ([&called](const map_t&, map_t::value_type, map_t::const_iterator)
+             { called = true; });
         obs.get<map>().erase(obs.get<map>().cbegin(), obs.get<map>().cend());
+        assert(before_called);
         assert(called);
         assert(obs.get<map>().empty());
     }
@@ -231,14 +269,23 @@ int main()
         foo.map.emplace(2, "abc");
         foo.map.emplace(3, "def");
         bool called{false};
-        boost::signals2::scoped_connection c =
-            obs.get<map>().on_erase([&called](const map_t&, map_t::value_type v,
-                                              map_t::const_iterator)
-                                {
-                                    std::cout << v.second.size() << std::endl;
-                                    assert(v.second == "abc");
-                                    called = true;
-                                });
+        bool before_called{false};
+        boost::signals2::scoped_connection c1 =
+            obs.get<map>().before_erase
+            ([&before_called](const map_t& m, map_t::const_iterator it)
+             {
+                 before_called = true;
+                 assert(it->second == "abc");
+             });
+        boost::signals2::scoped_connection c2 =
+            obs.get<map>().on_erase
+            ([&called](const map_t&,
+                       map_t::value_type v,
+                       map_t::const_iterator)
+             {
+                 assert(v.second == "abc");
+                 called = true;
+             });
         obs.get<map>().erase(2);
         assert(called);
         auto crmap = obs.get<map>().get();
