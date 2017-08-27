@@ -6,10 +6,16 @@
 
 #pragma once
 
+#include "observable/value.hpp"
+
+#include <type_traits>
+#include <utility>
+
 namespace observable {
 
-template<typename Model>
-struct observable_of;
+template<typename Observed, typename Enable = void>
+struct observable_of
+{ using type = value<Observed>; };
     
 template<typename T>
 using observable_of_t = typename observable_of<T>::type;

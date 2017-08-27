@@ -1,4 +1,4 @@
-#include "observable/variant.hpp"
+#include "observable/class.hpp"
 
 #include <array>
 #include <iostream>
@@ -7,9 +7,16 @@
 #include <boost/mpl/at.hpp>
 
 using variant_t = boost::variant<int, std::string>;
+struct foo_t
+{ variant_t variant; };
 
-using obs_t = observable::variant<variant_t>;
+struct variant{};
+using obs_t = observable::class_<
+    foo_t,
+    std::pair<variant_t, variant>
+    >;
 
+using OVariant = observable::observable_of_t<variant>;
 using OInt = observable::observable_of_t<int>;
 using OString = observable::observable_of_t<std::string>;
 
@@ -51,16 +58,18 @@ struct visitor_on_change_t
 int main()
 {
     static_assert(observable::is_variant<variant_t>::value, "error");
-    variant_t var;
-    obs_t ovariant(var);
+    foo_t foo;
+    obs_t obs(foo, foo.variant);
 
-    bool ovariant_on_change{false};
-    ovariant.on_change([&ovariant_on_change](const variant_t&)
-                  { ovariant_on_change = true;});
+    auto& ovariant = obs.get<variant>();
+    
+    bool obs_on_change{false};
+    obs.on_change([&obs_on_change](const foo_t&)
+                  { obs_on_change = true;});
     
     ovariant = "hi";
-    assert(ovariant_on_change);
-    ovariant_on_change = false;
+    assert(obs_on_change);
+    obs_on_change = false;
     
     bool str_on_change{false};
     bool num_on_change{false};
@@ -70,8 +79,8 @@ int main()
     assert(str_on_change);
     
     ovariant = 3;    
-    assert(ovariant_on_change);
-    ovariant_on_change = false;
+    assert(obs_on_change);
+    obs_on_change = false;
     
     ovariant.apply_visitor(visitor_on_change_t
                            {str_on_change, num_on_change});

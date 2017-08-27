@@ -9,7 +9,7 @@
 #define OBSERVABLE_IS_CLASS(oclass) \
 namespace observable { \
     template<> \
-    struct is_class<typename oclass::Model> \
+    struct is_class<typename oclass::Observed> \
         : std::true_type \
     { using type = oclass; }; \
 }

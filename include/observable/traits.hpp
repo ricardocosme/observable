@@ -11,14 +11,14 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <boost/variant.hpp>
-#include <observable/setter_value.hpp>
+#include <observable/set_get.hpp>
 
 namespace observable {
     
-template<typename Model>
+template<typename Observed>
 struct is_class : std::false_type {};
     
-template<typename Model>
+template<typename Observed>
 struct is_map : std::false_type {};
 
 //?    
@@ -26,7 +26,7 @@ template<typename Key, typename T>
 struct is_map<std::map<Key, T>>
     : std::true_type {};
     
-template<typename Model>
+template<typename Observed>
 struct is_unordered_map : std::false_type {};
 
 //?    

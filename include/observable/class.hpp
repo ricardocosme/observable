@@ -41,52 +41,29 @@ struct set_on_change
         auto& parent = _parent;
         *_it++ = 
             o.second.on_change(
-            [&parent](const typename T::second_type::Model&)
+            [&parent](const typename T::second_type::Observed&)
             { parent._on_change(parent.get()); });
     }
     
     Parent& _parent;
     mutable typename Parent::observable_on_change_conns_t::iterator _it;
 };
-    
-template<typename Model>
-struct observable_of {
-    using type = typename std::conditional<
-        is_vector<Model>::value,
-        vector<Model>,
-        typename std::conditional<
-            is_class<Model>::value,
-            typename is_class<Model>::type,
-            typename std::conditional<
-                is_variant<Model>::value,
-                variant<Model>,
-                typename std::conditional<
-                    is_unordered_set<Model>::value,
-                    unordered_set<Model>,
-                    typename std::conditional<
-                        is_map<Model>::value,
-                        map<Model>,
-                        typename std::conditional<
-                            is_unordered_map<Model>::value,
-                            unordered_map<Model>,
-                            typename std::conditional<
-                                is_set_get<Model>::value,
-                                setter_value<Model>,
-                                value<Model>
-                            >::type
-                        >::type
-                    >::type
-                >::type
-            >::type
-        >::type
-    >::type;
+
+template<typename Observed>
+struct observable_of<
+    Observed,
+    typename std::enable_if<is_class<Observed>::value>::type
+>
+{
+    using type = typename is_class<Observed>::type;
 };
+
     
-template<typename Model_, typename... Members>
+template<typename Observed_, typename... Members>
 class class_ 
 {
 public:
-    using Model = Model_;
+    using Observed = Observed_;
     using Tag2Observable = boost::fusion::map<
         boost::fusion::pair<
             typename Members::second_type,
@@ -96,9 +73,9 @@ public:
     class_() = default;
 
     template<typename... Observeds>
-    class_(Model& model,
+    class_(Observed& observed,
            Observeds&&... observeds)
-        : _model(&model)
+        : _observed(&observed)
         , _tag2observable
           (boost::fusion::pair<
            typename Members::second_type,
@@ -106,25 +83,25 @@ public:
            (observable_of_t<typename std::decay<Observeds>::type>
             (observable_factory(std::forward<Observeds>(observeds))))...)
     {
-        set_on_change<class_<Model_, Members...>> visitor{*this};
+        set_on_change<class_<Observed_, Members...>> visitor{*this};
         boost::fusion::for_each(_tag2observable, visitor);
     }
 
     class_(class_&& rhs) noexcept
-        : _model(rhs._model)
+        : _observed(rhs._observed)
         , _on_change(std::move(rhs._on_change))
     {
         rhs.observable_on_change_conns.swap(observable_on_change_conns);
-        set_on_change<class_<Model_, Members...>> visitor{*this};
+        set_on_change<class_<Observed_, Members...>> visitor{*this};
         boost::fusion::for_each(rhs._tag2observable, visitor);
         boost::fusion::move(std::move(rhs._tag2observable), _tag2observable);        
     }
     
     class_& operator=(class_&& rhs) noexcept
     {
-        _model = rhs._model;
+        _observed = rhs._observed;
         rhs.observable_on_change_conns.swap(observable_on_change_conns);        
-        set_on_change<class_<Model_, Members...>> visitor{*this};
+        set_on_change<class_<Observed_, Members...>> visitor{*this};
         boost::fusion::for_each(rhs._tag2observable, visitor);
         boost::fusion::move(std::move(rhs._tag2observable), _tag2observable);
         _on_change = std::move(rhs._on_change);
@@ -153,14 +130,14 @@ public:
     boost::signals2::connection on_change(F&& f)
     { return _on_change.connect(std::forward<F>(f)); }
     
-    const Model& get() const noexcept
-    { return *_model; }
+    const Observed& get() const noexcept
+    { return *_observed; }
 
 private:
     
-    Model* _model{nullptr};
+    Observed* _observed{nullptr};
     Tag2Observable _tag2observable;
-    boost::signals2::signal<void(const Model&)> _on_change;
+    boost::signals2::signal<void(const Observed&)> _on_change;
 
     using observable_on_change_conns_t =
         std::array<boost::signals2::scoped_connection, sizeof...(Members)>;

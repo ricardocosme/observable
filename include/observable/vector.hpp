@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "observable/traits.hpp"
 #include "observable/types.hpp"
 
 #include <boost/signals2.hpp>
@@ -16,22 +17,34 @@
 
 namespace observable { 
 
+template<typename Observed_>
+struct vector;
+    
+template<typename Observed>
+struct observable_of<
+    Observed,
+    typename std::enable_if<is_vector<Observed>::value>::type
+>
+{
+    using type = vector<Observed>;
+};
+    
 template<typename Observable>    
 class vector_iterator
     : public boost::iterator_adaptor<
         vector_iterator<Observable>,
-        typename Observable::Model::iterator,
+        typename Observable::Observed::iterator,
         std::shared_ptr<typename Observable::reference>,
         boost::bidirectional_traversal_tag,
         std::shared_ptr<typename Observable::reference>,
-        typename Observable::Model::difference_type
+        typename Observable::Observed::difference_type
     >
 {
 public:
     vector_iterator() = default;
 
     explicit vector_iterator
-    (Observable& observable, const typename Observable::Model::iterator& it)
+    (Observable& observable, const typename Observable::Observed::iterator& it)
         : vector_iterator::iterator_adaptor_(it)
         , _observable(&observable)
     {}
@@ -44,149 +57,149 @@ private:
     Observable* _observable{nullptr};    
 };
             
-template<typename Model_>
+template<typename Observed_>
 struct vector
 {
-    using Model = Model_;
+    using Observed = Observed_;
 
-    using value_type = typename Model::value_type;
-    using reference = observable_of_t<typename Model::value_type>;    
-    using const_reference = typename Model::const_reference;
+    using value_type = typename Observed::value_type;
+    using reference = observable_of_t<typename Observed::value_type>;    
+    using const_reference = typename Observed::const_reference;
     using pointer = reference*;
-    using const_pointer = typename Model::const_pointer;
-    using iterator = vector_iterator<vector<Model>>;
+    using const_pointer = typename Observed::const_pointer;
+    using iterator = vector_iterator<vector<Observed>>;
     using reverse_iterator = boost::reverse_iterator<iterator>;
-    using const_iterator = typename Model::const_iterator;
-    using const_reverse_iterator = typename Model::const_reverse_iterator;
-    using size_type = typename Model::size_type;
-    using difference_type = typename Model::difference_type;
-    using allocator_type = typename Model::allocator_type;
+    using const_iterator = typename Observed::const_iterator;
+    using const_reverse_iterator = typename Observed::const_reverse_iterator;
+    using size_type = typename Observed::size_type;
+    using difference_type = typename Observed::difference_type;
+    using allocator_type = typename Observed::allocator_type;
 
     vector() = default;
     
-    vector(Model& value)
-        : _model(&value)
+    vector(Observed& value)
+        : _observed(&value)
     {}
     
     iterator begin() noexcept
-    { return iterator(*this, _model->begin()); }
+    { return iterator(*this, _observed->begin()); }
 
     reverse_iterator rbegin() noexcept
     {
         return reverse_iterator
-            (iterator(*this, _model->end()));
+            (iterator(*this, _observed->end()));
     }
     
-    typename Model::const_iterator cbegin() const noexcept
-    { return _model->cbegin(); }
+    const_iterator cbegin() const noexcept
+    { return _observed->cbegin(); }
 
-    typename Model::const_reverse_iterator crbegin() noexcept
-    { return _model->crbegin(); }
+    const_reverse_iterator crbegin() noexcept
+    { return _observed->crbegin(); }
     
     iterator end() noexcept
-    { return iterator(*this, _model->end()); }
+    { return iterator(*this, _observed->end()); }
     
     reverse_iterator rend() noexcept
     {
         return reverse_iterator
-            (iterator(*this, _model->begin()));
+            (iterator(*this, _observed->begin()));
     }
     
-    typename Model::const_iterator cend() const noexcept
-    { return _model->cend(); }
+    const_iterator cend() const noexcept
+    { return _observed->cend(); }
     
-    typename Model::const_reverse_iterator crend() noexcept
-    { return _model->crend(); }
+    const_reverse_iterator crend() noexcept
+    { return _observed->crend(); }
     
     bool empty() const noexcept
-    { return _model->empty(); }
+    { return _observed->empty(); }
     
-    typename Model::size_type size() const noexcept
-    { return _model->size(); }
+    size_type size() const noexcept
+    { return _observed->size(); }
     
-    typename Model::size_type max_size() const noexcept
-    { return _model->max_size(); }
+    size_type max_size() const noexcept
+    { return _observed->max_size(); }
 
-    void reserve(typename Model::size_type new_cap)
-    { _model->reserve(new_cap); }
+    void reserve(size_type new_cap)
+    { _observed->reserve(new_cap); }
     
-    typename Model::size_type capacity() const noexcept
-    { return _model->capacity(); }
+    size_type capacity() const noexcept
+    { return _observed->capacity(); }
     
     void shrink_to_fit() const noexcept
-    { return _model->shrink_to_fit(); }
+    { return _observed->shrink_to_fit(); }
     
-    std::shared_ptr<reference> at(typename Model::size_type pos)
+    std::shared_ptr<reference> at(size_type pos)
     {
-        if (pos >= _model->size()) throw std::out_of_range("vector::at");
-        auto it = _model->begin() + pos;
+        if (pos >= _observed->size()) throw std::out_of_range("vector::at");
+        auto it = _observed->begin() + pos;
         return get_reference(it);
     }
     
-    typename Model::const_reference at(typename Model::size_type pos) const
-    { return _model->at(pos); }
+    const_reference at(size_type pos) const
+    { return _observed->at(pos); }
     
-    std::shared_ptr<reference> operator[](typename Model::size_type pos)
+    std::shared_ptr<reference> operator[](size_type pos)
     {
-        auto it = _model->begin() + pos;
+        auto it = _observed->begin() + pos;
         return get_reference(it);
     }
     
-    typename Model::const_reference operator[]
-    (typename Model::size_type pos) const
-    { return (*_model)[pos]; }
+    const_reference operator[]
+    (size_type pos) const
+    { return (*_observed)[pos]; }
 
     std::shared_ptr<reference> front()
     {
-        auto it = _model->begin();
+        auto it = _observed->begin();
         return get_reference(it);
     }
         
-    typename Model::const_reference front() const
-    { return _model->front(); }
+    const_reference front() const
+    { return _observed->front(); }
     
     std::shared_ptr<reference> back()
     {
-        auto it = _model->end();
+        auto it = _observed->end();
         --it;
         return get_reference(it);
     }
         
-    typename Model::const_reference back() const
-    { return _model->back(); }
+    const_reference back() const
+    { return _observed->back(); }
     
     void clear() noexcept
     {
-        _model->clear();
-        _on_erase(*_model, typename Model::const_iterator{});
-        _on_change(*_model);
+        _observed->clear();
+        _on_erase(*_observed, const_iterator{});
+        _on_change(*_observed);
     }
     
     //GCC 4.8.2 uses iterator and not const_iterator for the first argument
     iterator erase(iterator pos)        
     {
-        auto it = _model->erase(pos.base());
-        _on_erase(*_model, it);
-        _on_change(*_model);
+        auto it = _observed->erase(pos.base());
+        _on_erase(*_observed, it);
+        _on_change(*_observed);
         return iterator(*this, it);
     }
     
     //GCC 4.8.2 uses iterator and not const_iterator for the first argument
     iterator erase(iterator first, iterator last)        
     {
-        auto it = _model->erase(first.base(), last.base());
-        _on_erase(*_model, it);
-        _on_change(*_model);
+        auto it = _observed->erase(first.base(), last.base());
+        _on_erase(*_observed, it);
+        _on_change(*_observed);
         return iterator(*this, it);
     }
         
     //GCC 4.8.2 uses iterator and not const_iterator for the first argument
     template<typename... Args>
-    iterator emplace(typename Model::iterator pos, Args&&... args)
+    iterator emplace(typename Observed::iterator pos, Args&&... args)
     {
-        auto it = _model->emplace(pos, std::forward<Args>(args)...);
-        _on_insert(*_model, it);
-        _on_change(*_model);
+        auto it = _observed->emplace(pos, std::forward<Args>(args)...);
+        _on_insert(*_observed, it);
+        _on_change(*_observed);
         return iterator(*this, it);
     }
     
@@ -198,86 +211,86 @@ struct vector
     }
     
     //GCC 4.8.2 uses iterator and not const_iterator for the first argument
-    iterator insert(typename Model::iterator pos,
-                    const typename Model::value_type& value)
+    iterator insert(typename Observed::iterator pos,
+                    const value_type& value)
     {
-        auto it = _model->insert(pos, value);
-        _on_insert(*_model, it);
-        _on_change(*_model);
+        auto it = _observed->insert(pos, value);
+        _on_insert(*_observed, it);
+        _on_change(*_observed);
         return iterator(*this, it);
     }
     
     //GCC 4.8.2 uses iterator and not const_iterator for the first argument
-    iterator insert(typename Model::iterator pos,
-                    typename Model::value_type&& value)
+    iterator insert(typename Observed::iterator pos,
+                    value_type&& value)
     {
-        auto it = _model->insert(pos, std::move(value));
-        _on_insert(*_model, it);
-        _on_change(*_model);
+        auto it = _observed->insert(pos, std::move(value));
+        _on_insert(*_observed, it);
+        _on_change(*_observed);
         return iterator(*this, it);
     }
             
     //GCC 4.8.2 uses iterator and not const_iterator for the first
     //argument and `void` as return type instead of iterator
-    void insert(typename Model::iterator pos,
-                typename Model::size_type count,
-                const typename Model::value_type& value)
+    void insert(typename Observed::iterator pos,
+                size_type count,
+                const value_type& value)
     {
-        _model->insert(pos, count, value);
-        _on_insert(*_model, pos);
-        _on_change(*_model);
+        _observed->insert(pos, count, value);
+        _on_insert(*_observed, pos);
+        _on_change(*_observed);
     }
         
     //GCC 4.8.2 uses iterator and not const_iterator for the first
     //argument and `void` as return type instead of iterator
     template<typename InputIt>
-    void insert(typename Model::iterator pos, InputIt first, InputIt last)
+    void insert(typename Observed::iterator pos, InputIt first, InputIt last)
     {
-        _model->insert(pos, first, last);
-        _on_insert(*_model, pos);
-        _on_change(*_model);
+        _observed->insert(pos, first, last);
+        _on_insert(*_observed, pos);
+        _on_change(*_observed);
     }
         
-    void insert(typename Model::iterator pos,
-                std::initializer_list<typename Model::value_type> ilist)
+    void insert(typename Observed::iterator pos,
+                std::initializer_list<value_type> ilist)
     { insert(pos, ilist.begin(), ilist.end()); }
 
-    void push_back(const typename Model::value_type& value)
+    void push_back(const value_type& value)
     {
-        _model->push_back(value);
-        _on_insert(*_model, std::prev(_model->end()));
-        _on_change(*_model);
+        _observed->push_back(value);
+        _on_insert(*_observed, std::prev(_observed->end()));
+        _on_change(*_observed);
     }
     
-    void push_back(typename Model::value_type&& value)
+    void push_back(value_type&& value)
     {
-        _model->push_back(std::move(value));
-        _on_insert(*_model, std::prev(_model->end()));
-        _on_change(*_model);
+        _observed->push_back(std::move(value));
+        _on_insert(*_observed, std::prev(_observed->end()));
+        _on_change(*_observed);
     }
 
     template<typename...Args>
     void emplace_back(Args&&... args)
     {
-        _model->emplace_back(std::forward<Args>(args)...);
-        _on_insert(*_model, std::prev(_model->end()));
-        _on_change(*_model);
+        _observed->emplace_back(std::forward<Args>(args)...);
+        _on_insert(*_observed, std::prev(_observed->end()));
+        _on_change(*_observed);
     }
     
     void pop_back()
     {
-        _model->pop_back();
-        _on_erase(*_model, typename Model::const_iterator{});
-        _on_change(*_model);
+        _observed->pop_back();
+        _on_erase(*_observed, const_iterator{});
+        _on_change(*_observed);
     }
     
-    void swap(Model& other)
+    void swap(Observed& other)
     {
-        _model->swap(other);
+        _observed->swap(other);
         //TODO: check?
-        _on_insert(*_model, typename Model::const_iterator{});
-        _on_erase(*_model, typename Model::const_iterator{});
-        _on_change(*_model);
+        _on_insert(*_observed, const_iterator{});
+        _on_erase(*_observed, const_iterator{});
+        _on_change(*_observed);
     }
 
     //TODO resize
@@ -298,20 +311,20 @@ struct vector
     boost::signals2::connection on_value_change(F&& f)
     { return _on_value_change.connect(std::forward<F>(f)); }
     
-    const Model& get() const noexcept
-    { return *_model; }
+    const Observed& get() const noexcept
+    { return *_observed; }
     
-    Model* _model;
+    Observed* _observed;
     
-    boost::signals2::signal<void(const Model&, typename Model::const_iterator)>
+    boost::signals2::signal<void(const Observed&, const_iterator)>
     _on_erase, _on_insert, _on_value_change;
     
-    boost::signals2::signal<void(const Model&)> _on_change;
+    boost::signals2::signal<void(const Observed&)> _on_change;
     
-    std::unordered_map<typename Model::const_iterator::pointer,
+    std::unordered_map<const_pointer,
                        std::weak_ptr<reference>> _it2observable;
 private:
-    std::shared_ptr<reference> get_reference(typename Model::iterator it)
+    std::shared_ptr<reference> get_reference(typename Observed::iterator it)
     {
         auto observable = _it2observable[&*it].lock();
         if (!observable)
@@ -327,7 +340,7 @@ private:
                  });
             auto& container = *this;
             observable->_on_change.connect(
-                [&container, it](const typename reference::Model&)
+                [&container, it](const typename reference::Observed&)
                 {
                     container._on_value_change(container.get(), it);
                     container._on_change(container.get());
@@ -336,7 +349,7 @@ private:
         }
         return observable;
     }
-    friend class vector_iterator<vector<Model>>;
+    friend class vector_iterator<vector<Observed>>;
 };
     
 }

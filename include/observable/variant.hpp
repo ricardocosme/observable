@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "observable/traits.hpp"
 #include "observable/types.hpp"
 
 #include <boost/signals2.hpp>
@@ -13,6 +14,18 @@
 
 namespace observable { 
 
+template<typename Observed_>
+struct variant;
+    
+template<typename Observed>
+struct observable_of<
+    Observed,
+    typename std::enable_if<is_variant<Observed>::value>::type
+>
+{
+    using type = variant<Observed>;
+};
+    
 template<typename ObservableVariant>
 struct set_variant_t
 {
@@ -32,11 +45,11 @@ struct set_variant_t
     ObservableVariant& _ovariant;
 };
     
-template<typename Model_>
+template<typename Observed_>
 struct variant
 {
-    using Model = Model_;
-    using types = typename Model::types;
+    using Observed = Observed_;
+    using types = typename Observed::types;
     using observable_variant_t = typename boost::make_variant_over<
         typename boost::mpl::transform<
           types,
@@ -46,8 +59,8 @@ struct variant
 
     variant() = default;
     
-    variant(Model& value)
-        : _model(&value)
+    variant(Observed& value)
+        : _observed(&value)
     {}
 
     template<typename T>
@@ -57,19 +70,19 @@ struct variant
         return *this;
     }
     
-    void assign(Model o)
+    void assign(Observed o)
     {
-        *_model = std::move(o);
+        *_observed = std::move(o);
         
         set_variant_t<observable_variant_t> set_variant(_ovariant);
         
-        boost::apply_visitor(set_variant, *_model);
+        boost::apply_visitor(set_variant, *_observed);
         
-        _on_change(*_model);
+        _on_change(*_observed);
     }
     
-    const Model& get() const noexcept
-    { return *_model; }
+    const Observed& get() const noexcept
+    { return *_observed; }
     
     template<typename Visitor>
     void apply_visitor(Visitor&& visitor)
@@ -79,11 +92,11 @@ struct variant
     boost::signals2::connection on_change(F&& f)
     { return _on_change.connect(std::forward<F>(f)); }
     
-    Model* _model{nullptr};
+    Observed* _observed{nullptr};
     
     observable_variant_t _ovariant;
     
-    boost::signals2::signal<void(const Model&)> _on_change;
+    boost::signals2::signal<void(const Observed&)> _on_change;
 };
     
 }

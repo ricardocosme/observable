@@ -28,9 +28,9 @@
 #define OBSERVABLE_gen_tags(members) \
     BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(members), OBSERVABLE_gen_tag, members)
 
-#define OBSERVABLE_gen_oclass(model, members) \
+#define OBSERVABLE_gen_oclass(observed, members) \
     ::observable::class_<                      \
-        model, OBSERVABLE_gen_members(members) \
+        observed, OBSERVABLE_gen_members(members) \
     >
 
 #define OBSERVABLE_gen_factory_param(z, idx, members) \
@@ -39,6 +39,6 @@
 #define OBSERVABLE_gen_factory_params(members) \
     BOOST_PP_ENUM(BOOST_PP_SEQ_SIZE(members), OBSERVABLE_gen_factory_param, members)
 
-#define OBSERVABLE_CLASS_GEN(oclass, model, members) \
+#define OBSERVABLE_CLASS_GEN(oclass, observed, members) \
     OBSERVABLE_gen_tags(members) \
-    using oclass = OBSERVABLE_gen_oclass(model, members);
+    using oclass = OBSERVABLE_gen_oclass(observed, members);

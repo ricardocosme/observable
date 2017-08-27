@@ -1,32 +1,21 @@
-#include "observable/class.hpp"
+#include "observable/vector.hpp"
 
 #include <array>
-#include <iostream>
 #include <string>
 #include <vector>
 
 using vector_t = std::vector<std::string>;
 
-struct foo_t
-{
-    vector_t vector;
-};
-
-struct vector{};
-
-using obs_t = observable::class_<
-    foo_t,
-    std::pair<vector_t, vector>
-    >;
+using obs_t = observable::vector<vector_t>;
 
 int main()
 {
-    foo_t foo;
-    obs_t obs(foo, foo.vector);
+    vector_t vec;;
+    obs_t obs(vec);
 
     //vector_iterator default constructed
     {
-        observable::observable_of_t<vector_t>::iterator i;
+        obs_t::iterator i;
     }
     
     //at fail
@@ -34,7 +23,7 @@ int main()
         bool ok{false};
         try
         {
-            obs.get<vector>().at(0);
+            obs.at(0);
         }
         catch(const std::out_of_range&)
         { ok = true; }
@@ -44,12 +33,12 @@ int main()
     //at success
     {
         bool ok{true};
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
         try
         {
             bool called{false};
-            auto ob = obs.get<vector>().at(0);
+            auto ob = obs.at(0);
             assert(ob->get() == "abc");
             ob->on_change([&called](const std::string&)
                           { called = true; });
@@ -64,11 +53,11 @@ int main()
     
     //at const fail
     {
-        foo.vector.clear();
+        vec.clear();
         bool ok{false};
         try
         {
-            const auto& co = obs.get<vector>();
+            const auto& co = obs;
             co.at(0);
         }
         catch(const std::out_of_range&)
@@ -79,11 +68,11 @@ int main()
     //at const success
     {
         bool ok{true};
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
         try
         {
-            const auto& co = obs.get<vector>();
+            const auto& co = obs;
             auto v = co.at(0);
             assert(v == "abc");
         }
@@ -94,10 +83,10 @@ int main()
 
     //operator[] 
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
         bool called{false};
-        auto ob = obs.get<vector>()[0];
+        auto ob = obs[0];
         assert(ob->get() == "abc");
         ob->on_change([&called](const std::string&)
                      { called = true; });
@@ -108,17 +97,17 @@ int main()
 
     //operator[] const
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
-        const auto& cobs = obs.get<vector>();
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
+        const auto& cobs = obs;
         assert(cobs[0] == "abc");
     }
     
     //front()
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
-        auto ob = obs.get<vector>().front();
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
+        auto ob = obs.front();
         assert(ob->get() == "abc");
         bool called{false};
         ob->on_change([&called](const std::string&)
@@ -130,9 +119,9 @@ int main()
     
     //front() const
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
-        auto& cobs = obs.get<vector>();
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
+        auto& cobs = obs;
         auto ob = cobs.front();
         assert(ob->get() == "abc");
         bool called{false};
@@ -145,10 +134,10 @@ int main()
     
     //back()
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
-        foo.vector.emplace(std::next(foo.vector.begin()), "def");
-        auto ob = obs.get<vector>().back();
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
+        vec.emplace(std::next(vec.begin()), "def");
+        auto ob = obs.back();
         assert(ob->get() == "def");
         bool called{false};
         ob->on_change([&called](const std::string&)
@@ -160,18 +149,18 @@ int main()
     
     //back() const
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
-        foo.vector.emplace(std::next(foo.vector.begin()), "def");
-        const auto& cobs = obs.get<vector>();
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
+        vec.emplace(std::next(vec.begin()), "def");
+        const auto& cobs = obs;
         assert(cobs.back() == "def");
     }
     
     //begin()
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
-        auto ob = *obs.get<vector>().begin();
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
+        auto ob = *obs.begin();
         assert(ob->get() == "abc");
         bool called{false};
         ob->on_change([&called](const std::string&)
@@ -183,239 +172,239 @@ int main()
 
     //cbegin()
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
-        auto ob = *obs.get<vector>().cbegin();
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
+        auto ob = *obs.cbegin();
         assert(ob == "abc");
     }
     
     //end/cend()
     {
-        foo.vector.clear();
-        foo.vector.emplace(foo.vector.begin(), "abc");
-        assert(obs.get<vector>().begin() != obs.get<vector>().end());
-        assert(obs.get<vector>().cbegin() != obs.get<vector>().cend());
+        vec.clear();
+        vec.emplace(vec.begin(), "abc");
+        assert(obs.begin() != obs.end());
+        assert(obs.cbegin() != obs.cend());
     }
 
     //empty()
     {
-        foo.vector.clear();
-        assert(obs.get<vector>().empty());
+        vec.clear();
+        assert(obs.empty());
     }
     
     //size()
     {
-        foo.vector.clear();
-        auto it = foo.vector.begin();
-        foo.vector.emplace(it, "abc");
-        foo.vector.emplace(++it, "def");
-        assert(obs.get<vector>().size() == 2);
+        vec.clear();
+        auto it = vec.begin();
+        vec.emplace(it, "abc");
+        vec.emplace(++it, "def");
+        assert(obs.size() == 2);
     }
     
     //max_size()
     {
-        foo.vector.clear();
-        auto it = foo.vector.begin();
-        foo.vector.emplace(it, "abc");
-        foo.vector.emplace(++it, "def");
-        assert(obs.get<vector>().max_size() >= 2);
+        vec.clear();
+        auto it = vec.begin();
+        vec.emplace(it, "abc");
+        vec.emplace(++it, "def");
+        assert(obs.max_size() >= 2);
     }
     
      //clear()
     {
-        foo.vector.clear();
-        auto it = foo.vector.begin();
-        foo.vector.emplace(it, "abc");
-        foo.vector.emplace(++it, "def");
+        vec.clear();
+        auto it = vec.begin();
+        vec.emplace(it, "abc");
+        vec.emplace(++it, "def");
         bool called{false};
-        obs.get<vector>().on_erase([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_erase([&called](const vector_t&, vector_t::const_iterator)
                                    { called = true; });
-        obs.get<vector>().clear();
+        obs.clear();
         assert(called);
-        assert(obs.get<vector>().empty());
+        assert(obs.empty());
     }
         
      //reserve()
     {
-        foo.vector.clear();
-        obs.get<vector>().reserve(100);
+        vec.clear();
+        obs.reserve(100);
     }
     
     //capacity()
     {
-        foo.vector.clear();
-        auto it = foo.vector.begin();
-        foo.vector.emplace(it, "abc");
-        assert(obs.get<vector>().capacity() >= 1);
+        vec.clear();
+        auto it = vec.begin();
+        vec.emplace(it, "abc");
+        assert(obs.capacity() >= 1);
     }
 
     //shrink_to_fit()
     {
-        foo.vector.clear();
-        auto it = foo.vector.begin();
-        foo.vector.emplace(it, "abc");
-        obs.get<vector>().shrink_to_fit();
+        vec.clear();
+        auto it = vec.begin();
+        vec.emplace(it, "abc");
+        obs.shrink_to_fit();
     }
      //erase()
     {
-        foo.vector.clear();
-        auto it = foo.vector.begin();
-        foo.vector.emplace(it, "abc");
-        foo.vector.emplace(++it, "def");
+        vec.clear();
+        auto it = vec.begin();
+        vec.emplace(it, "abc");
+        vec.emplace(++it, "def");
         bool called{false};
-        obs.get<vector>().on_erase([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_erase([&called](const vector_t&, vector_t::const_iterator)
                                    { called = true; });
-        obs.get<vector>().erase(obs.get<vector>().begin());
+        obs.erase(obs.begin());
         assert(called);
-        assert(obs.get<vector>().size() == 1);
+        assert(obs.size() == 1);
     }
     
      //erase(first, last)
     {
-        foo.vector.clear();
-        auto it = foo.vector.begin();
-        foo.vector.emplace(it, "abc");
-        foo.vector.emplace(++it, "def");
+        vec.clear();
+        auto it = vec.begin();
+        vec.emplace(it, "abc");
+        vec.emplace(++it, "def");
         bool called{false};
-        obs.get<vector>().on_erase([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_erase([&called](const vector_t&, vector_t::const_iterator)
                                    { called = true; });
-        obs.get<vector>().erase(obs.get<vector>().begin(),
-                                obs.get<vector>().end());
+        obs.erase(obs.begin(),
+                                obs.end());
         assert(called);
-        assert(obs.get<vector>().empty());
+        assert(obs.empty());
     }
     
     //emplace()
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().on_insert([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
                                     { called = true; });
-        auto it = foo.vector.begin();
-        obs.get<vector>().emplace(it, "abc");
-        obs.get<vector>().emplace(++it, "def");
+        auto it = vec.begin();
+        obs.emplace(it, "abc");
+        obs.emplace(++it, "def");
         assert(called);
-        assert(*obs.get<vector>().cbegin() == "abc");
-        assert(*std::next(obs.get<vector>().cbegin()) == "def");
+        assert(*obs.cbegin() == "abc");
+        assert(*std::next(obs.cbegin()) == "def");
     }
     
     //push_back()
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().push_back("abc");
+        obs.push_back("abc");
         boost::signals2::scoped_connection c =
-            obs.get<vector>().on_insert([&called](const vector_t&,
+            obs.on_insert([&called](const vector_t&,
                                                   vector_t::const_iterator it)
                                     {
                                         assert(*it == "def");
                                         called = true;
                                     });
-        obs.get<vector>().push_back("def");
+        obs.push_back("def");
         assert(called);
-        assert(*obs.get<vector>().cbegin() == "abc");
-        assert(*std::next(obs.get<vector>().cbegin()) == "def");
+        assert(*obs.cbegin() == "abc");
+        assert(*std::next(obs.cbegin()) == "def");
     }
     
     //emplace_back()
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().push_back("abc");
+        obs.push_back("abc");
         boost::signals2::scoped_connection c =
-            obs.get<vector>().on_insert([&called](const vector_t&,
+            obs.on_insert([&called](const vector_t&,
                                                   vector_t::const_iterator it)
                                     {
                                         assert(*it == "def");
                                         called = true;
                                     });
-        obs.get<vector>().emplace_back("def");
+        obs.emplace_back("def");
         assert(called);
-        assert(*obs.get<vector>().cbegin() == "abc");
-        assert(*std::next(obs.get<vector>().cbegin()) == "def");
+        assert(*obs.cbegin() == "abc");
+        assert(*std::next(obs.cbegin()) == "def");
     }
     
     //pop_back()
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().push_back("abc");
+        obs.push_back("abc");
         boost::signals2::scoped_connection c =
-            obs.get<vector>().on_erase([&called](const vector_t&,
+            obs.on_erase([&called](const vector_t&,
                                                   vector_t::const_iterator it)
                                     {
                                         called = true;
                                     });
-        obs.get<vector>().pop_back();
+        obs.pop_back();
         assert(called);
-        assert(obs.get<vector>().empty());
+        assert(obs.empty());
     }
     
     //insert(pos, const value_type&)
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().on_insert([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
                                     { called = true; });
-        auto it = foo.vector.begin();
+        auto it = vec.begin();
         std::string v = "abc";
-        obs.get<vector>().insert(it, v);
+        obs.insert(it, v);
         std::string v2 = "def";
-        obs.get<vector>().insert(++it, v2);
+        obs.insert(++it, v2);
         assert(called);
-        assert(*obs.get<vector>().cbegin() == "abc");
-        assert(*std::next(obs.get<vector>().cbegin()) == "def");
+        assert(*obs.cbegin() == "abc");
+        assert(*std::next(obs.cbegin()) == "def");
     }
 
     //insert(pos, value_type&&)
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().on_insert([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
                                     { called = true; });
-        auto it = foo.vector.begin();
-        obs.get<vector>().insert(it, "abc");
-        obs.get<vector>().insert(++it, "def");
+        auto it = vec.begin();
+        obs.insert(it, "abc");
+        obs.insert(++it, "def");
         assert(called);
-        assert(*obs.get<vector>().cbegin() == "abc");
-        assert(*std::next(obs.get<vector>().cbegin()) == "def");
+        assert(*obs.cbegin() == "abc");
+        assert(*std::next(obs.cbegin()) == "def");
     }
     
     //insert(pos, count, const value_type&)
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().on_insert([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
                                     { called = true; });
-        auto it = foo.vector.begin();
-        obs.get<vector>().insert(it, 2, "abc");
+        auto it = vec.begin();
+        obs.insert(it, 2, "abc");
         assert(called);
-        assert(*std::next(obs.get<vector>().cbegin()) == "abc");
+        assert(*std::next(obs.cbegin()) == "abc");
     }
     
     //insert(pos, first, last)
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().on_insert([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
                                     { called = true; });
         std::array<std::string, 2> a{{"abc", "def"}};
-        obs.get<vector>().insert(foo.vector.begin(), a.cbegin(), a.cend());
+        obs.insert(vec.begin(), a.cbegin(), a.cend());
         assert(called);
-        assert(*obs.get<vector>().cbegin() == "abc");
-        assert(*std::next(obs.get<vector>().cbegin()) == "def");
+        assert(*obs.cbegin() == "abc");
+        assert(*std::next(obs.cbegin()) == "def");
     }
 
     //insert(ilist)
     {
-        foo.vector.clear();
+        vec.clear();
         bool called{false};
-        obs.get<vector>().on_insert([&called](const vector_t&, vector_t::const_iterator)
+        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
                                     { called = true; });
-        obs.get<vector>().insert(foo.vector.begin(), {"abc", "def"});
+        obs.insert(vec.begin(), {"abc", "def"});
         assert(called);
-        assert(*obs.get<vector>().cbegin() == "abc");
-        assert(*std::next(obs.get<vector>().cbegin()) == "def");
+        assert(*obs.cbegin() == "abc");
+        assert(*std::next(obs.cbegin()) == "def");
     }
 
 }

@@ -6,27 +6,25 @@
 
 #pragma once
 
-#include "observable/types.hpp"
-
 #include <boost/signals2.hpp>
 
 namespace observable { 
             
-template<typename Model_>
+template<typename Observed_>
 struct value
 {
-    using Model = Model_;
+    using Observed = Observed_;
 
     value() = default;
     
-    value(Model& value)
-        : _model(&value)
+    value(Observed& value)
+        : _observed(&value)
     {
     }
 
     //noexcept to variant assignment?
     value(value&& rhs) noexcept
-        : _model(rhs._model)
+        : _observed(rhs._observed)
         , _on_change(std::move(rhs._on_change))
     {
     }
@@ -34,7 +32,7 @@ struct value
     //noexcept to variant assignment?
     value& operator=(value&& rhs) noexcept
     {
-        _model = rhs._model;
+        _observed = rhs._observed;
         _on_change = std::move(rhs._on_change);
         return *this;
     }
@@ -46,14 +44,14 @@ struct value
         return *this;
     }
     
-    void assign(Model o)
+    void assign(Observed o)
     {
-        *_model = std::move(o);
-        _on_change(*_model);
+        *_observed = std::move(o);
+        _on_change(*_observed);
     }
     
-    const Model& get() const noexcept
-    { return *_model; }
+    const Observed& get() const noexcept
+    { return *_observed; }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
@@ -61,8 +59,8 @@ struct value
         return _on_change.connect(std::forward<F>(f));
     }
     
-    Model* _model{nullptr};
-    boost::signals2::signal<void(const Model&)> _on_change;
+    Observed* _observed{nullptr};
+    boost::signals2::signal<void(const Observed&)> _on_change;
 };
     
 }

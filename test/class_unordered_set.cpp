@@ -1,4 +1,4 @@
-#include "observable/unordered_set.hpp"
+#include "observable/class.hpp"
 
 #include <array>
 #include <iostream>
@@ -7,23 +7,33 @@
 
 using set_t = std::unordered_set<std::string>;
 
-using obs_t = observable::unordered_set<set_t>;
+struct foo_t
+{
+    set_t set;
+};
+
+struct set{};
+
+using obs_t = observable::class_<
+    foo_t,
+    std::pair<set_t, set>
+    >;
 
 int main()
 {
-    set_t set;
-    obs_t obs(set);
+    foo_t foo;
+    obs_t obs(foo, foo.set);
 
     //emplace
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.emplace("abc");
+        obs.get<set>().emplace("abc");
         assert(ok);
     }
 
@@ -31,12 +41,12 @@ int main()
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = false;
                 });
-        obs.emplace_hint(set.begin(), "abc");
+        obs.get<set>().emplace_hint(foo.set.begin(), "abc");
         assert(!ok);
     }
     
@@ -44,43 +54,43 @@ int main()
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.emplace_hint(set.begin(), "def");
+        obs.get<set>().emplace_hint(foo.set.begin(), "def");
         assert(ok);
     }
     
     //size
     {
-        assert(obs.size() == 2);
+        assert(obs.get<set>().size() == 2);
     }
     
     //begin/cbegin()
     {
-        assert(*obs.begin() == "def");
-        assert(*obs.cbegin() == "def");
+        assert(*obs.get<set>().begin() == "def");
+        assert(*obs.get<set>().cbegin() == "def");
     }
     
     //end/cend()
     {
-        assert(obs.end() != obs.begin());
-        assert(obs.cend() != obs.cbegin());
+        assert(obs.get<set>().end() != obs.get<set>().begin());
+        assert(obs.get<set>().cend() != obs.get<set>().cbegin());
     }
     
     //insert lvalue success
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
         auto e = "ghi";
-        obs.insert(e);
+        obs.get<set>().insert(e);
         assert(ok);
     }
         
@@ -88,12 +98,12 @@ int main()
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.insert("jkl");
+        obs.get<set>().insert("jkl");
         assert(ok);
     }
     
@@ -101,13 +111,13 @@ int main()
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
         auto e = "mno";
-        obs.insert_hint(obs.begin(), e);
+        obs.get<set>().insert_hint(obs.get<set>().begin(), e);
         assert(ok);
     }
     
@@ -115,12 +125,12 @@ int main()
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.insert_hint(obs.begin(), "pqr");
+        obs.get<set>().insert_hint(obs.get<set>().begin(), "pqr");
         assert(ok);
     }
     
@@ -128,13 +138,13 @@ int main()
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
         std::array<std::string, 2> a{{"123", "456"}};
-        obs.insert(a.begin(), a.end());
+        obs.get<set>().insert(a.begin(), a.end());
         assert(ok);
     }
         
@@ -142,106 +152,106 @@ int main()
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.insert({"789", "012"});
+        obs.get<set>().insert({"789", "012"});
         assert(ok);
     }
                         
     //count
     {
-        assert(obs.count("abc") == 1);
-        assert(obs.count("<invalid>") == 0);
+        assert(obs.get<set>().count("abc") == 1);
+        assert(obs.get<set>().count("<invalid>") == 0);
     }
     
     //find
     {
-        assert(obs.find("abc") != obs.end());
-        assert(obs.find("<invalid>") == obs.end());
+        assert(obs.get<set>().find("abc") != obs.get<set>().end());
+        assert(obs.get<set>().find("<invalid>") == obs.get<set>().end());
     }
     
     //equal_range
     {
-        assert(obs.equal_range("abc").first != obs.end());
-        assert(obs.equal_range("<invalid>").first == obs.end());
+        assert(obs.get<set>().equal_range("abc").first != obs.get<set>().end());
+        assert(obs.get<set>().equal_range("<invalid>").first == obs.get<set>().end());
     }
     
     //swap
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_insert(
+            obs.get<set>().on_insert(
                 [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
         set_t other{"098", "765"};
-        obs.swap(other);
+        obs.get<set>().swap(other);
         assert(ok);
     }
     
     //erase
     {
-        set.clear();
-        set.emplace("abc");
+        foo.set.clear();
+        foo.set.emplace("abc");
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_erase(
+            obs.get<set>().on_erase(
                 [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     assert(v == "abc");
                     ok = true;
                 });
-        obs.erase(set.begin());
+        obs.get<set>().erase(foo.set.begin());
         assert(ok);
     }
     
     //erase(first, last)
     {
         bool ok{false};
-        obs.emplace("ghi");
+        obs.get<set>().emplace("ghi");
         boost::signals2::scoped_connection c =
-            obs.on_erase(
+            obs.get<set>().on_erase(
                 [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.erase(set.begin(), set.end());
+        obs.get<set>().erase(foo.set.begin(), foo.set.end());
         assert(ok);
     }
     
     //erase(key) success
     {
         bool ok{false};
-        obs.emplace("abc");
-        obs.emplace("def");
-        obs.emplace("ghi");
+        obs.get<set>().emplace("abc");
+        obs.get<set>().emplace("def");
+        obs.get<set>().emplace("ghi");
         boost::signals2::scoped_connection c =
-            obs.on_erase(
+            obs.get<set>().on_erase(
                 [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.erase("abc");
+        obs.get<set>().erase("abc");
         assert(ok);
     }
     
     //erase(key) success
     {
         bool ok{true};
-        obs.emplace("abc");
-        obs.emplace("def");
-        obs.emplace("ghi");
+        obs.get<set>().emplace("abc");
+        obs.get<set>().emplace("def");
+        obs.get<set>().emplace("ghi");
         boost::signals2::scoped_connection c =
-            obs.on_erase(
+            obs.get<set>().on_erase(
                 [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = false;
                 });
-        obs.erase("<invalid>");
+        obs.get<set>().erase("<invalid>");
         assert(ok);
     }
     
@@ -249,18 +259,18 @@ int main()
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
-            obs.on_erase(
+            obs.get<set>().on_erase(
                 [&ok](const set_t&, set_t::value_type, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.clear();
+        obs.get<set>().clear();
         assert(ok);
     }
     
     //empty
     {
-        assert(obs.empty());
+        assert(obs.get<set>().empty());
     }
 }
 

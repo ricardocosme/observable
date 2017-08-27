@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "observable/traits.hpp"
 #include "observable/types.hpp"
 
 #include <boost/signals2.hpp>
@@ -14,19 +15,21 @@
 namespace observable { 
 
 template<typename Observed_>
-struct set_get
+struct setter_value;
+    
+template<typename Observed>
+struct observable_of<
+    Observed,
+    typename std::enable_if<is_set_get<Observed>::value>::type
+>
 {
-    using Observed = Observed_;
-    using Setter = std::function<void(Observed)>;
-    using Getter = std::function<const Observed&()>;
-    Setter setter;
-    Getter getter;
+    using type = setter_value<Observed>;
 };
     
 template<typename SetGet>
 struct setter_value
 {
-    using Model = typename SetGet::Observed;
+    using Observed = typename SetGet::Observed;
     using Setter = typename SetGet::Setter;
     using Getter = typename SetGet::Getter;
     
@@ -61,13 +64,13 @@ struct setter_value
         return *this;
     }
     
-    void assign(Model o)
+    void assign(Observed o)
     {
         _setter(std::move(o));
         _on_change(_getter());
     }
     
-    const Model& get() const noexcept
+    const Observed& get() const noexcept
     { return _getter(); }
     
     template<typename F>
@@ -78,7 +81,7 @@ struct setter_value
     
     Setter _setter;
     Getter _getter;
-    boost::signals2::signal<void(const Model&)> _on_change;
+    boost::signals2::signal<void(const Observed&)> _on_change;
 };
     
 }

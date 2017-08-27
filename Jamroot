@@ -21,8 +21,14 @@ exe simple : demo/simple.cpp ;
 exe specific : demo/specific.cpp ;
 
 run test/class.cpp ;
+run test/class_map.cpp ;
+run test/class_unordered_map.cpp ;
+run test/class_unordered_set.cpp ;
+run test/class_variant.cpp ;
+run test/class_vector.cpp ;
 run test/map.cpp ;
 run test/member_class_l3.cpp ;
+run test/setter_value.cpp ;
 run test/unordered_map.cpp ;
 run test/unordered_set.cpp ;
 run test/variant.cpp ;
@@ -30,11 +36,10 @@ run test/variant_of_class.cpp ;
 run test/vector.cpp ;
 run test/vector_of_class.cpp ;
 run test/vector_of_vector.cpp ;
-run test/setter_value.cpp ;
 
 install stage
-  : simple
+  : hide_model
     specific
-    hide_model
+    simple
   ;
   
