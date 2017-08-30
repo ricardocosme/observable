@@ -8,9 +8,12 @@
 
 #include "observable/traits.hpp"
 #include "observable/types.hpp"
+#include "observable/detail/match_visitor.hpp"
 
 #include <boost/signals2.hpp>
 #include <boost/variant.hpp>
+
+#include <type_traits>
 
 namespace observable { 
 
@@ -72,12 +75,14 @@ struct variant
     
     void assign(Observed o)
     {
+        auto before_type = _ovariant.which();
         *_observed = std::move(o);
         
         set_variant_t<observable_variant_t> set_variant(_ovariant);
         
         boost::apply_visitor(set_variant, *_observed);
-        
+
+        if(before_type != _ovariant.which()) _on_change_type(*_observed);
         _on_change(*_observed);
     }
     
@@ -87,16 +92,28 @@ struct variant
     template<typename Visitor>
     void apply_visitor(Visitor&& visitor)
     { boost::apply_visitor(std::forward<Visitor>(visitor), _ovariant); }
+
+    template<typename... Fs>
+    inline void match(Fs&&... fs)
+    {
+        auto visitor = detail::match_visitor<typename std::decay<Fs>::type...>
+            (std::forward<Fs>(fs)...);
+        apply_visitor(std::move(visitor));
+    }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
     { return _on_change.connect(std::forward<F>(f)); }
     
+    template<typename F>
+    boost::signals2::connection on_change_type(F&& f)
+    { return _on_change_type.connect(std::forward<F>(f)); }
+    
     Observed* _observed{nullptr};
     
     observable_variant_t _ovariant;
     
-    boost::signals2::signal<void(const Observed&)> _on_change;
+    boost::signals2::signal<void(const Observed&)> _on_change, _on_change_type;
 };
     
 }

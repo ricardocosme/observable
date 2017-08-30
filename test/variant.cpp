@@ -55,12 +55,22 @@ int main()
     obs_t ovariant(var);
 
     bool ovariant_on_change{false};
+    bool ovariant_on_change_type{false};
     ovariant.on_change([&ovariant_on_change](const variant_t&)
-                  { ovariant_on_change = true;});
+                       { ovariant_on_change = true;});
+    ovariant.on_change_type([&ovariant_on_change_type](const variant_t&)
+                            { ovariant_on_change_type = true;});
     
     ovariant = "hi";
     assert(ovariant_on_change);
+    assert(ovariant_on_change_type);
     ovariant_on_change = false;
+    ovariant_on_change_type = false;
+    ovariant = "hello";
+    assert(ovariant_on_change);
+    assert(!ovariant_on_change_type);
+    ovariant_on_change_type = false;
+    ovariant = "hello";
     
     bool str_on_change{false};
     bool num_on_change{false};
@@ -77,4 +87,10 @@ int main()
                            {str_on_change, num_on_change});
     ovariant.apply_visitor(visitor_t{});
     assert(num_on_change);
+    ovariant_on_change = false;
+    
+    ovariant.match([&ovariant_on_change](OInt&){ovariant_on_change = true;},
+                   [](OString&){});
+    assert(ovariant_on_change);
 }
+
