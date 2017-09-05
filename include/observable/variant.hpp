@@ -64,7 +64,7 @@ struct variant
     
     variant(Observed& observed)
         : _observed(&observed)
-    {}
+    { assign(*_observed); }
 
     template<typename T>
     variant& operator=(T&& o)
