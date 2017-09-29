@@ -20,22 +20,24 @@ exe hide_model : demo/hide_model.cpp ;
 exe simple : demo/simple.cpp ;
 exe specific : demo/specific.cpp ;
 
-run test/class.cpp ;
-run test/class_map.cpp ;
-run test/class_unordered_map.cpp ;
-run test/class_unordered_set.cpp ;
-run test/class_variant.cpp ;
-run test/class_vector.cpp ;
-run test/map.cpp ;
-run test/member_class_l3.cpp ;
-run test/setter_value.cpp ;
-run test/unordered_map.cpp ;
-run test/unordered_set.cpp ;
-run test/variant.cpp ;
-run test/variant_of_class.cpp ;
-run test/vector.cpp ;
-run test/vector_of_class.cpp ;
-run test/vector_of_vector.cpp ;
+# run test/class.cpp ;
+# run test/class_map.cpp ;
+# run test/class_unordered_map.cpp ;
+# run test/class_unordered_set.cpp ;
+# run test/class_variant.cpp ;
+# run test/class_vector.cpp ;
+# run test/map.cpp ;
+# run test/member_class_l3.cpp ;
+run test/exp/set_get.cpp ;
+run test/exp/unordered_map.cpp ;
+run test/exp/unordered_map_of_observable.cpp ;
+run test/exp/unordered_set.cpp ;
+# run test/variant.cpp ;
+# run test/variant_of_class.cpp ;
+run test/exp/vector.cpp ;
+run test/exp/vector_of_observable.cpp ;
+run test/exp/vector_of_class.cpp ;
+# run test/vector_of_vector.cpp ;
 
 install stage
   : hide_model

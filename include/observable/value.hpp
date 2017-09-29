@@ -62,5 +62,5 @@ struct value
     Observed* _observed{nullptr};
     boost::signals2::signal<void(const Observed&)> _on_change;
 };
-    
+
 }
