@@ -6,33 +6,40 @@
 
 #pragma once
 
-#include <boost/signals2.hpp>
+#include "observable/is_observable.hpp"
 
-namespace observable { 
-            
+#include <boost/signals2.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/random_generator.hpp>
+
+namespace observable {
+                
 template<typename Observed_>
 struct value
-{
+{    
     using Observed = Observed_;
 
-    value() = default;
+    value()
+    : tag(boost::uuids::to_string(boost::uuids::random_generator{}()))
+    {}
     
-    value(Observed& observed)
-        : _observed(&observed)
+    value(Observed observed)
+        : tag(boost::uuids::to_string(boost::uuids::random_generator{}()))
+        , _observed(std::move(observed))
     {
     }
 
-    //noexcept to variant assignment?
-    value(value&& rhs) noexcept
-        : _observed(rhs._observed)
+    value(value&& rhs)
+        : tag(std::move(rhs.tag))
+        , _observed(std::move(rhs._observed))
         , _on_change(std::move(rhs._on_change))
     {
     }
 
-    //noexcept to variant assignment?
-    value& operator=(value&& rhs) noexcept
+    value& operator=(value&& rhs)
     {
-        _observed = rhs._observed;
+        tag = std::move(rhs.tag);
+        _observed = std::move(rhs._observed);
         _on_change = std::move(rhs._on_change);
         return *this;
     }
@@ -46,21 +53,36 @@ struct value
     
     void assign(Observed o)
     {
-        *_observed = std::move(o);
-        _on_change(*_observed);
+        _observed = std::move(o);
+        _on_change(_observed);
     }
-    
-    const Observed& get() const noexcept
-    { return *_observed; }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
     {
         return _on_change.connect(std::forward<F>(f));
     }
+
+    const Observed& get() const noexcept
+    { return _observed; }
     
-    Observed* _observed{nullptr};
+    std::string tag;
+    
+// protected:
+    
+    Observed _observed;
     boost::signals2::signal<void(const Observed&)> _on_change;
 };
-
+    
+template<typename T>
+bool operator==(const value<T>& lhs, const value<T>& rhs)
+{ return lhs.tag == rhs.tag; }
+    
+template<typename T>
+bool operator!=(const value<T>& lhs, const value<T>& rhs)
+{ return !(lhs == rhs); }
+    
+template<typename T>    
+struct is_observable<value<T>> : std::true_type {};
+        
 }

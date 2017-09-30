@@ -8,9 +8,9 @@
 
 #include <type_traits>
 
-namespace observable { namespace exp {
+namespace observable { 
 
 template<typename T>    
 struct is_observable : std::false_type {};
     
-    }}
+}

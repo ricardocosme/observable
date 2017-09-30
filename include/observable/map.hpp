@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "observable/traits.hpp"
-#include "observable/types.hpp"
+#include "observable/is_observable.hpp"
 
 #include <boost/signals2.hpp>
 #include <boost/iterator.hpp>
@@ -15,196 +14,152 @@
 #include <memory>
 #include <unordered_map>
 
-namespace observable { 
+namespace observable {
 
-template<typename Observed_>
-struct map;
-    
-template<typename Observed>
-struct observable_of<
-    Observed,
-    typename std::enable_if<is_map<Observed>::value>::type
+template<typename Key, typename T, typename Enable = void>
+class map;
+        
+template<typename Key, typename T>
+class map<
+    Key,
+    T,
+    typename std::enable_if<!is_observable<T>::value>::type
 >
 {
-    using type = map<Observed>;
-};
+    using container_t = std::map<Key, T>;
+    container_t _container;
     
-template<typename Observed>    
-class map_iterator
-    : public boost::iterator_adaptor<
-        map_iterator<Observed>,
-        typename Observed::Observed::iterator,
-        std::pair<
-            typename Observed::Observed::key_type,
-            std::shared_ptr<typename Observed::reference>
-        >,
-        boost::bidirectional_traversal_tag,
-        std::pair<
-            typename Observed::Observed::key_type,
-            std::shared_ptr<typename Observed::reference>
-            >,
-        typename Observed::Observed::difference_type
-    >
-{
+    boost::signals2::signal<void(typename container_t::const_iterator)>
+    _on_erase, _on_insert, _before_erase;
+    
+    boost::signals2::signal<void()> _on_change;
+
 public:
-    map_iterator() = default;
-
-    explicit map_iterator
-    (Observed& observed, const typename Observed::Observed::iterator& it)
-        : map_iterator::iterator_adaptor_(it)
-        , _observed(&observed)
-    {}
-private:
-    friend class boost::iterator_core_access;
-    using value = std::pair<
-        typename Observed::Observed::key_type,
-        std::shared_ptr<typename Observed::reference>
-        >;
     
-    value dereference() const
-    {
-        auto it = this->base_reference();
-        //TODO:lvalue ref?
-        auto& p = *it;        
-        return std::make_pair(p.first, _observed->get_reference(it));
-    }
-    Observed* _observed{nullptr};    
-};
-
-template<typename Observed_>
-struct map
-{
-    using Observed = Observed_;
-
-    using key_type = typename Observed::key_type;
-    using mapped_type = typename Observed::mapped_type;
-    using value_type = typename Observed::value_type;
-    using key_compare = typename Observed::key_compare;
-    using reference = observable_of_t<typename Observed::mapped_type>;
-    using const_reference = typename Observed::const_reference;
-    using pointer = reference*;
-    using const_pointer = typename Observed::const_pointer;
-    using iterator = map_iterator<map<Observed>>;
-    using reverse_iterator = boost::reverse_iterator<iterator>;
-    using const_iterator = typename Observed::const_iterator;
-    using const_reverse_iterator = typename Observed::const_reverse_iterator;
-    using size_type = typename Observed::size_type;
-    using difference_type = typename Observed::difference_type;
-    using allocator_type = typename Observed::allocator_type;
+    using Model = container_t;
+    
+    using key_type = typename container_t::key_type;
+    using mapped_type = typename container_t::mapped_type;
+    using value_type = typename container_t::value_type;
+    using key_compare = typename container_t::key_compare;
+    using reference = typename container_t::reference;
+    using const_reference = typename container_t::const_reference;
+    using pointer = typename container_t::pointer;
+    using const_pointer = typename container_t::const_pointer;
+    using iterator = typename container_t::iterator;
+    using reverse_iterator = typename container_t::reverse_iterator;
+    using const_iterator = typename container_t::const_iterator;
+    using const_reverse_iterator = typename container_t::const_reverse_iterator;
+    using size_type = typename container_t::size_type;
+    using difference_type = typename container_t::difference_type;
+    using allocator_type = typename container_t::allocator_type;
 
     map() = default;
-    
-    map(Observed& observed)
-        : _observed(&observed)
+
+    template<typename InputIterator>
+    map(InputIterator first, InputIterator last)
+        : _container(first, last)
     {}
     
-    iterator begin() noexcept
-    { return iterator(*this, _observed->begin()); }
-
-    reverse_iterator rbegin() noexcept
+    map(std::initializer_list<value_type> l)
+        : _container(std::move(l))
+    {}
+    
+    map(container_t observed)
     {
-        return reverse_iterator
-            (iterator(*this, _observed->end()));
+        for(auto& e : observed)
+            _container.insert(std::move(e));
     }
+    
+    iterator begin() noexcept
+    { return _container.begin(); }
+
+    const_iterator begin() const noexcept
+    { return _container.begin(); }
+    
+    reverse_iterator rbegin() noexcept
+    { return _container.rbegin(); }
     
     const_iterator cbegin() const noexcept
-    { return _observed->cbegin(); }
-
+    { return _container.cbegin(); }
+    
     const_reverse_iterator crbegin() noexcept
-    { return _observed->crbegin(); }
+    { return _container.crbegin(); }
     
     iterator end() noexcept
-    { return iterator(*this, _observed->end()); }
+    { return _container.end(); }
+    
+    const_iterator end() const noexcept
+    { return _container.end(); }
     
     reverse_iterator rend() noexcept
-    {
-        return reverse_iterator
-            (iterator(*this, _observed->begin()));
-    }
+    { return _container.rend(); }
     
     const_iterator cend() const noexcept
-    { return _observed->cend(); }
+    { return _container.cend(); }
     
     const_reverse_iterator crend() noexcept
-    { return _observed->crend(); }
+    { return _container.crend(); }
     
     bool empty() const noexcept
-    { return _observed->empty(); }
+    { return _container.empty(); }
     
     size_type size() const noexcept
-    { return _observed->size(); }
+    { return _container.size(); }
     
     size_type max_size() const noexcept
-    { return _observed->max_size(); }
+    { return _container.max_size(); }
 
-    std::shared_ptr<reference> at(const key_type& key)
-    {
-        auto it = _observed->lower_bound(key);
-        if (it == _observed->end() || _observed->key_comp()(key, (*it).first))
-            throw std::out_of_range("map::at");
-        return get_reference(it);
-    }
+    mapped_type& at(const key_type& key)
+    { return _container.at(key); }
     
-    const mapped_type&
-    at(const key_type& key) const
-    { return _observed->at(key); }
+    const mapped_type& at(const key_type& key) const
+    { return _container.at(key); }
     
-    std::shared_ptr<reference> operator[](const key_type& key)
-    {
-        auto it = _observed->lower_bound(key);
-        if (it == _observed->end() || _observed->key_comp()(key, (*it).first))
-            it = _observed->insert(it, value_type
-                               (key, mapped_type()));
-        return get_reference(it);
-    }
+    mapped_type& operator[](const key_type& key)
+    { return _container[key]; }
     
-    std::shared_ptr<reference> operator[](key_type&& key)
-    {
-        auto it = _observed->lower_bound(key);
-        if (it == _observed->end() || _observed->key_comp()(key, (*it).first))
-            it = _observed->insert(it, value_type
-                               (std::move(key), mapped_type()));
-        return get_reference(it);
-    }
+    mapped_type& operator[](key_type&& key)
+    { return _container[std::move(key)]; }
     
     void clear() noexcept
     {
-        _before_erase(*_observed, _observed->cend());
-        _observed->clear();
-        _on_erase(*_observed, const_iterator{});
-        _on_change(*_observed);
+        _before_erase(_container.cend());
+        _container.clear();
+        _on_erase(const_iterator{});
+        _on_change();
     }
     
     iterator erase(const_iterator pos)        
     {
-        _before_erase(*_observed, pos);
-        auto it = _observed->erase(pos);
-        _on_erase(*_observed, it);
-        _on_change(*_observed);
-        return iterator(*this, it);
+        _before_erase(pos);
+        auto it = _container.erase(pos);
+        _on_erase(it);
+        _on_change();
+        return it;
     }
     
     iterator erase(const_iterator first,
                    const_iterator last)        
     {
-        _before_erase(*_observed, first);
-        auto it = _observed->erase(first, last);
-        _on_erase(*_observed, it);
-        _on_change(*_observed);
-        return iterator(*this, it);
+        _before_erase(first);
+        auto it = _container.erase(first, last);
+        _on_erase(it);
+        _on_change();
+        return it;
     }
     
     size_type erase(const key_type& key)
     {
-        auto rng = _observed->equal_range(key);
-        auto before_size = _observed->size();
-        _before_erase(*_observed, rng.first);
+        auto rng = _container.equal_range(key);
+        auto before_size = _container.size();
+        _before_erase(rng.first);
         erase(rng.first, rng.second);
-        auto n = before_size - _observed->size();
+        auto n = before_size - _container.size();
         if (n > 0)
         {
-            _on_erase(*_observed, rng.second);
-            _on_change(*_observed);
+            _on_erase(rng.second);
+            _on_change();
         }
         return n;
     }
@@ -212,113 +167,411 @@ struct map
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     {
-        auto ret = _observed->emplace(std::forward<Args>(args)...);
+        auto ret = _container.emplace(std::forward<Args>(args)...);
         if (ret.second)
         {
-            _on_insert(*_observed, ret.first);
-            _on_change(*_observed);
+            _on_insert(ret.first);
+            _on_change();
         }
-        return std::make_pair(iterator(*this, ret.first), ret.second);
+        return ret;
     }
     
     template<typename... Args>
     iterator emplace_hint
     (const_iterator hint, Args&&... args)
     {
-        auto before_size = _observed->size();
-        auto it = _observed->emplace_hint(hint, std::forward<Args>(args)...);
-        if (_observed->size() != before_size)
+        auto before_size = _container.size();
+        auto it = _container.emplace_hint(hint, std::forward<Args>(args)...);
+        if (_container.size() != before_size)
         {
-            _on_insert(*_observed, it);
-            _on_change(*_observed);
+            _on_insert(it);
+            _on_change();
         }
-        return iterator(*this, it);
+        return it;
     }
 
     std::pair<iterator, bool> insert
     (const value_type& value)
     {
-        auto ret = _observed->insert(value);
+        auto ret = _container.insert(value);
         if (ret.second)
         {
-            _on_insert(*_observed, ret.first);
-            _on_change(*_observed);
+            _on_insert(ret.first);
+            _on_change();
         }
-        return std::make_pair(iterator(*this, ret.first), ret.second);
+        return ret;
     }
     
     std::pair<iterator, bool> insert(value_type&& value)
     {
-        auto ret = _observed->insert(std::move(value));
+        auto ret = _container.insert(std::move(value));
         if (ret.second)
         {
-            _on_insert(*_observed, ret.first);
-            _on_change(*_observed);
+            _on_insert(ret.first);
+            _on_change();
         }
-        return std::make_pair(iterator(*this, ret.first), ret.second);
+        return ret;
     }
     
     iterator insert(const_iterator hint,
                     const value_type& value)
     {
-        auto before_size = _observed->size();
-        auto it = _observed->insert(hint, value);
-        if (_observed->size() != before_size)
+        auto before_size = _container.size();
+        auto it = _container.insert(hint, value);
+        if (_container.size() != before_size)
         {
-            _on_insert(*_observed, it);
-            _on_change(*_observed);
+            _on_insert(it);
+            _on_change();
         }
-        return iterator(*this, it);
+        return it;
     }
     
     template<typename InputIt>
     void insert(InputIt first, InputIt last)
     {
-        auto before_size = _observed->size();
-        _observed->insert(first, last);
-        if (_observed->size() != before_size)
+        auto before_size = _container.size();
+        _container.insert(first, last);
+        if (_container.size() != before_size)
         {
-            _on_insert(*_observed, const_iterator{}); //TODO
-            _on_change(*_observed);
+            _on_insert(const_iterator{}); //TODO
+            _on_change();
         }
     }
     
     void insert(std::initializer_list<value_type> ilist)
     { insert(ilist.begin(), ilist.end()); }
     
-    void swap(Observed& other)
+    void swap(container_t& other)
     {
-        _before_erase(*_observed, _observed->cend());
-        _observed->swap(other);
+        _before_erase(_container.cend());
+        _container.swap(other);
         //TODO: check?
-        _on_insert(*_observed, const_iterator{});
-        _on_erase(*_observed, const_iterator{});
-        _on_change(*_observed);
+        _on_insert(const_iterator{});
+        _on_erase(const_iterator{});
+        _on_change();
     }
 
     size_type count
     (const key_type& key) const noexcept
-    { return _observed->count(key); }
+    { return _container.count(key); }
     
     iterator find(const key_type& key)
-    { return iterator(*this, _observed->find(key)); }
+    { return _container.find(key); }
     
     const_iterator find
     (const key_type& key) const
-    { return _observed->find(key); }
+    { return _container.find(key); }
     
     std::pair<iterator, iterator> equal_range
     (const key_type& key)
-    {
-        auto p = _observed->equal_range(key);
-        return std::make_pair(iterator(*this, p.first),
-                              iterator(*this, p.second));
-    }
+    { return _container.equal_range(key); }
     
     std::pair<const_iterator,
               const_iterator> equal_range
     (const key_type& key) const
-    { return _observed->equal_range(key); }
+    { return _container.equal_range(key); }
+    
+    const container_t& model() const noexcept
+    { return _container; }
+    
+    template<typename F>
+    boost::signals2::connection before_erase(F&& f)
+    { return _before_erase.connect(std::forward<F>(f)); }
+    
+    template<typename F>
+    boost::signals2::connection on_erase(F&& f)
+    { return _on_erase.connect(std::forward<F>(f)); }
+    
+    template<typename F>
+    boost::signals2::connection on_insert(F&& f)
+    { return _on_insert.connect(std::forward<F>(f)); }
+    
+    template<typename F>
+    boost::signals2::connection on_change(F&& f)
+    { return _on_change.connect(std::forward<F>(f)); }
+};
+    
+template<typename Key, typename T>
+class map<
+    Key,
+    T,
+    typename std::enable_if<is_observable<T>::value>::type
+>
+{
+    using container_t = std::map<Key, T>;
+    container_t _container;
+    
+    boost::signals2::signal<void(typename container_t::const_iterator)>
+    _on_erase, _on_insert, _before_erase, _on_value_change;
+    
+    boost::signals2::signal<void()> _on_change;
+
+    std::unordered_map<
+        typename container_t::const_pointer,
+        boost::signals2::scoped_connection            
+    > _ptr2value;
+    
+    void insert_value_change_conn(typename container_t::value_type& e)
+    {
+        _ptr2value.emplace
+            (&e,
+             e.second.on_change
+             ([this, &e](const typename container_t::mapped_type&)
+              {
+                  auto it = _container.find(e.first);
+                  assert(it != _container.end());
+                  _on_value_change(it);
+                  _on_change();
+              }));             
+    }
+    
+public:
+
+    using Model = container_t;
+    
+    using key_type = typename container_t::key_type;
+    using mapped_type = typename container_t::mapped_type;
+    using value_type = typename container_t::value_type;
+    using key_compare = typename container_t::key_compare;
+    using reference = typename container_t::reference;
+    using const_reference = typename container_t::const_reference;
+    using pointer = typename container_t::pointer;
+    using const_pointer = typename container_t::const_pointer;
+    using iterator = typename container_t::iterator;
+    using reverse_iterator = typename container_t::reverse_iterator;
+    using const_iterator = typename container_t::const_iterator;
+    using const_reverse_iterator = typename container_t::const_reverse_iterator;
+    using size_type = typename container_t::size_type;
+    using difference_type = typename container_t::difference_type;
+    using allocator_type = typename container_t::allocator_type;
+
+    map() = default;
+
+    template<typename InputIterator>
+    map(InputIterator first, InputIterator last)
+        : _container(first, last)
+    {}
+    
+    map(std::initializer_list<value_type> l)
+        : _container(std::move(l))
+    {}
+    
+    iterator begin() noexcept
+    { return _container.begin(); }
+
+    const_iterator begin() const noexcept
+    { return _container.begin(); }
+    
+    reverse_iterator rbegin() noexcept
+    { return _container.rbegin(); }
+    
+    const_iterator cbegin() const noexcept
+    { return _container.cbegin(); }
+    
+    const_reverse_iterator crbegin() noexcept
+    { return _container.crbegin(); }
+    
+    iterator end() noexcept
+    { return _container.end(); }
+    
+    const_iterator end() const noexcept
+    { return _container.end(); }
+    
+    const_iterator cend() const noexcept
+    { return _container.cend(); }
+    
+    reverse_iterator rend() noexcept
+    { return _container.rend(); }
+    
+    const_reverse_iterator crend() noexcept
+    { return _container.crend(); }
+    
+    bool empty() const noexcept
+    { return _container.empty(); }
+    
+    size_type size() const noexcept
+    { return _container.size(); }
+    
+    size_type max_size() const noexcept
+    { return _container.max_size(); }
+
+    mapped_type& at(const key_type& key)
+    { return _container.at(key); }
+    
+    const mapped_type& at(const key_type& key) const
+    { return _container.at(key); }
+    
+    mapped_type& operator[](const key_type& key)
+    { return _container[key]; }
+    
+    mapped_type& operator[](key_type&& key)
+    { return _container[std::move(key)]; }
+    
+    void clear() noexcept
+    {
+        _before_erase(_container.cend());
+        _container.clear();
+        _on_erase(const_iterator{});
+        _on_change();
+    }
+    
+    iterator erase(const_iterator pos)        
+    {
+        _before_erase(pos);
+        _ptr2value.erase(&*pos);
+        auto it = _container.erase(pos);
+        _on_erase(it);
+        _on_change();
+        return it;
+    }
+    
+    iterator erase(const_iterator first,
+                   const_iterator last)        
+    {
+        _before_erase(first);
+        std::for_each(first, last,
+                      [this](const value_type& e)
+                      { _ptr2value.erase(&e); });
+        auto it = _container.erase(first, last);
+        _on_erase(it);
+        _on_change();
+        return it;
+    }
+    
+    size_type erase(const key_type& key)
+    {
+        auto rng = _container.equal_range(key);
+        auto before_size = _container.size();
+        _ptr2value.erase(&*rng.first);
+        _before_erase(rng.first);
+        erase(rng.first, rng.second);
+        auto n = before_size - _container.size();
+        if (n > 0)
+        {
+            _on_erase(rng.second);
+            _on_change();
+        }
+        return n;
+    }
+    
+    template<typename... Args>
+    std::pair<iterator, bool> emplace(Args&&... args)
+    {
+        auto ret = _container.emplace(std::forward<Args>(args)...);
+        if (ret.second)
+        {
+            _on_insert(ret.first);
+            _on_change();
+            insert_value_change_conn(*ret.first);
+        }
+        return ret;
+    }
+    
+    template<typename... Args>
+    iterator emplace_hint
+    (const_iterator hint, Args&&... args)
+    {
+        auto before_size = _container.size();
+        auto it = _container.emplace_hint(hint, std::forward<Args>(args)...);
+        if (_container.size() != before_size)
+        {
+            _on_insert(it);
+            _on_change();
+            insert_value_change_conn(*it);
+        }
+        return it;
+    }
+
+    // std::pair<iterator, bool> insert
+    // (const value_type& value)
+    // {
+    //     auto ret = _container.insert(value);
+    //     if (ret.second)
+    //     {
+    //         _on_insert(ret.first);
+    //         _on_change();
+    //         insert_value_change_conn(*ret.first);
+    //     }
+    //     return ret;
+    // }
+    
+    std::pair<iterator, bool> insert(value_type&& value)
+    {
+        auto ret = _container.insert(std::move(value));
+        if (ret.second)
+        {
+            _on_insert(ret.first);
+            _on_change();
+            insert_value_change_conn(*ret.first);
+        }
+        return ret;
+    }
+    
+    iterator insert(const_iterator hint,
+                    value_type&& value)
+    {
+        auto before_size = _container.size();
+        auto it = _container.insert(hint, std::move(value));
+        if (_container.size() != before_size)
+        {
+            _on_insert(it);
+            _on_change();
+            insert_value_change_conn(*it);
+        }
+        return it;
+    }
+    
+    template<typename InputIt>
+    void insert(InputIt first, InputIt last)
+    {
+        auto before_size = _container.size();
+        _container.insert(first, last);
+        if (_container.size() != before_size)
+        {
+            _on_insert(const_iterator{}); //TODO
+            _on_change();
+            //TODO
+            // std::for_each(it, it + std::distance(first, last),
+            //               [this](value_type& e)
+            //               { insert_value_change_conn(e); });
+        }
+    }
+    
+    void insert(std::initializer_list<value_type> ilist)
+    { insert(ilist.begin(), ilist.end()); }
+    
+    void swap(container_t& other)
+    {
+        _before_erase(_container.cend());
+        _container.swap(other);
+        //TODO: check?
+        _on_insert(const_iterator{});
+        _on_erase(const_iterator{});
+        _on_change();
+    }
+
+    size_type count
+    (const key_type& key) const noexcept
+    { return _container.count(key); }
+    
+    iterator find(const key_type& key)
+    { return _container.find(key); }
+    
+    const_iterator find
+    (const key_type& key) const
+    { return _container.find(key); }
+    
+    std::pair<iterator, iterator> equal_range
+    (const key_type& key)
+    { return _container.equal_range(key); }
+    
+    std::pair<const_iterator,
+              const_iterator> equal_range
+    (const key_type& key) const
+    { return _container.equal_range(key); }
+
+    const container_t& model() const noexcept
+    { return _container; }
     
     template<typename F>
     boost::signals2::connection before_erase(F&& f)
@@ -338,47 +591,7 @@ struct map
     
     template<typename F>
     boost::signals2::connection on_value_change(F&& f)
-    { return _on_value_change.connect(std::forward<F>(f)); }
-    
-    const Observed& get() const noexcept
-    { return *_observed; }
-    
-    Observed* _observed;
-    
-    boost::signals2::signal<void(const Observed&, const_iterator)>
-    _on_erase, _on_insert, _on_value_change, _before_erase;
-    
-    boost::signals2::signal<void(const Observed&)> _on_change;
-    
-    std::unordered_map<const_pointer,
-                       std::weak_ptr<reference>> _it2observable;
-private:
-    std::shared_ptr<reference> get_reference(typename Observed::iterator it)
-    {
-        auto observable = _it2observable[&*it].lock();
-        if (!observable)
-        {
-            auto& it2observable = _it2observable;
-            auto it_ptr = &*it;
-            observable = std::shared_ptr<reference>
-                (new reference(observable_factory(it->second)),
-                 [&it2observable, it_ptr](reference *p)
-                 {
-                     it2observable.erase(it_ptr);
-                     delete p;
-                 });
-            auto& container = *this;
-            observable->_on_change.connect(
-                [&container, it](const typename reference::Observed&)
-                {
-                    container._on_value_change(container.get(), it);
-                    container._on_change(container.get());
-                });
-            it2observable[&*it] = observable;
-        }
-        return observable;
-    }
-    friend class map_iterator<map<Observed>>;
+    { return _on_value_change.connect(std::forward<F>(f)); }    
 };
-    
+
 }

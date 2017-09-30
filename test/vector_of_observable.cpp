@@ -1,11 +1,11 @@
-#include "observable/exp/value.hpp"
-#include "observable/exp/vector.hpp"
+#include "observable/value.hpp"
+#include "observable/vector.hpp"
 
 #include <string>
 #include <vector>
 
 using vector_t = std::vector<std::string>;
-using ovector_t = observable::exp::vector<observable::exp::value<std::string>>;
+using ovector_t = observable::vector<observable::value<std::string>>;
 
 template<typename ocontainer, typename value_type>
 void check_equal(ocontainer& c, std::initializer_list<value_type> il)
@@ -30,6 +30,16 @@ int main()
         ovec.emplace_back(std::string{"b"});
         ovec.emplace_back(std::string{"c"});
         check_equal(ovec, {"a", "b", "c"});        
+    }
+    
+    //ovector_t(const ovector_t&)
+    {
+        ovector_t ovec;
+        ovec.emplace_back(std::string{"a"});
+        ovec.emplace_back(std::string{"b"});
+        ovec.emplace_back(std::string{"c"});
+        auto ovec2 = std::move(ovec);
+        check_equal(ovec2, {"a", "b", "c"});        
     }
     
     //ovector_t.on_value_change()
@@ -117,7 +127,7 @@ int main()
             bool called{false};
             auto& ovalue = ovec.at(0);
             assert(ovalue.get() == "abc");
-            ovalue.on_change([&called]()
+            ovalue.on_change([&called](std::string)
                           { called = true; });
             ovalue.assign("def");
             assert(ovalue.get() == "def");
@@ -165,7 +175,7 @@ int main()
         bool called{false};
         auto& ovalue = ovec[0];
         assert(ovalue.get() == std::string{"abc"});
-        ovalue.on_change([&called]()
+        ovalue.on_change([&called](std::string)
                      { called = true; });
         ovalue.assign("def");
         assert(ovalue.get() == "def");
@@ -187,7 +197,7 @@ int main()
         auto& ovalue = ovec.front();
         assert(ovalue.get() == "abc");
         bool called{false};
-        ovalue.on_change([&called]()
+        ovalue.on_change([&called](std::string)
                          { called = true; });
         ovalue.assign("def");
         assert(ovalue.get() == "def");
@@ -202,7 +212,7 @@ int main()
         auto& ovalue = covec.front();
         assert(ovalue.get() == "abc");
         bool called{false};
-        ovalue.on_change([&called]()
+        ovalue.on_change([&called](std::string)
                          { called = true; });
         ovalue.assign("def");
         assert(ovalue.get() == "def");
@@ -217,7 +227,7 @@ int main()
         auto& ovalue = ovec.back();
         assert(ovalue.get() == "def");
         bool called{false};
-        ovalue.on_change([&called]()
+        ovalue.on_change([&called](std::string)
                          { called = true; });
         ovalue.assign("ghi");
         assert(ovalue.get() == "ghi");
@@ -240,7 +250,7 @@ int main()
         auto& ovalue = *ovec.begin();
         assert(ovalue.get() == "abc");
         bool called{false};
-        ovalue.on_change([&called]()
+        ovalue.on_change([&called](std::string)
                          { called = true; });
         ovalue.assign("def");
         assert(ovalue.get() == "def");

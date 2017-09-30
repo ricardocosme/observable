@@ -11,9 +11,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <boost/variant.hpp>
-#include <observable/set_get.hpp>
 
-namespace observable {
+namespace observable { 
     
 template<typename Observed>
 struct is_class : std::false_type {};
@@ -55,11 +54,11 @@ template<BOOST_VARIANT_ENUM_PARAMS(typename T)>
 struct is_variant<boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>>
     : std::true_type {};
 
-template<typename T>
-struct is_set_get : std::false_type {};
+// template<typename T>
+// struct is_set_get : std::false_type {};
     
-template<typename T>
-struct is_set_get<set_get<T>> : std::true_type {};
-    
+// template<typename T>
+// struct is_set_get<set_get<T>> : std::true_type {};
+
 }
 

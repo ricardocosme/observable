@@ -1,29 +1,41 @@
 #include "observable/vector.hpp"
 
-#include <array>
 #include <string>
 #include <vector>
 
 using vector_t = std::vector<std::string>;
+using ovector_t = observable::vector<std::string>;
 
-using obs_t = observable::vector<vector_t>;
+template<typename ocontainer, typename value_type>
+void check_equal(ocontainer& c, std::initializer_list<value_type> il)
+{
+    auto it = il.begin();
+    assert(c.size() == il.size());
+    for(auto e : c)
+        assert(e == *it++);
+}
 
 int main()
 {
-    vector_t vec;;
-    obs_t obs(vec);
-
-    //vector_iterator default constructed
+    //ovector_t()
     {
-        obs_t::iterator i;
+        ovector_t ovec;        
+    }
+
+    //ovector_t(vector_t)
+    {
+        vector_t vec{"a", "b", "c"};
+        ovector_t ovec(vec);
+        check_equal(ovec, {"a", "b", "c"});
     }
     
     //at fail
     {
+        ovector_t ovec;
         bool ok{false};
         try
         {
-            obs.at(0);
+            ovec.at(0);
         }
         catch(const std::out_of_range&)
         { ok = true; }
@@ -33,18 +45,12 @@ int main()
     //at success
     {
         bool ok{true};
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
         try
         {
-            bool called{false};
-            auto ob = obs.at(0);
-            assert(ob->get() == "abc");
-            ob->on_change([&called](const std::string&)
-                          { called = true; });
-            ob->assign("def");
-            assert(ob->get() == "def");
-            assert(called);
+            auto ovalue = ovec.at(0);
+            assert(ovalue == "abc");
         }
         catch(const std::out_of_range&)
         { ok = false; }
@@ -53,12 +59,12 @@ int main()
     
     //at const fail
     {
-        vec.clear();
+        ovector_t ovec;
         bool ok{false};
         try
         {
-            const auto& co = obs;
-            co.at(0);
+            const auto& covalue = ovec;
+            covalue.at(0);
         }
         catch(const std::out_of_range&)
         { ok = true; }
@@ -68,13 +74,13 @@ int main()
     //at const success
     {
         bool ok{true};
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
         try
         {
-            const auto& co = obs;
-            auto v = co.at(0);
-            assert(v == "abc");
+            const auto& covec = ovec;
+            auto covalue = covec.at(0);
+            assert(covalue == "abc");
         }
         catch(const std::out_of_range&)
         { ok = false; }
@@ -83,368 +89,321 @@ int main()
 
     //operator[] 
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        bool called{false};
-        auto ob = obs[0];
-        assert(ob->get() == "abc");
-        ob->on_change([&called](const std::string&)
-                     { called = true; });
-        ob->assign("def");
-        assert(ob->get() == "def");
-        assert(called);
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        auto ovalue = ovec[0];
+        assert(ovalue == "abc");
     }
 
     //operator[] const
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        const auto& cobs = obs;
-        assert(cobs[0] == "abc");
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        const auto& covec = ovec;
+        assert(covec[0] == "abc");
     }
     
     //front()
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        auto ob = obs.front();
-        assert(ob->get() == "abc");
-        bool called{false};
-        ob->on_change([&called](const std::string&)
-                     { called = true; });
-        ob->assign("def");
-        assert(ob->get() == "def");
-        assert(called);
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        auto ovalue = ovec.front();
+        assert(ovalue == "abc");
     }
     
     //front() const
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        auto& cobs = obs;
-        auto ob = cobs.front();
-        assert(ob->get() == "abc");
-        bool called{false};
-        ob->on_change([&called](const std::string&)
-                     { called = true; });
-        ob->assign("def");
-        assert(ob->get() == "def");
-        assert(called);
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        auto& covec = ovec;
+        auto ovalue = covec.front();
+        assert(ovalue == "abc");
     }
     
     //back()
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        vec.emplace(std::next(vec.begin()), "def");
-        auto ob = obs.back();
-        assert(ob->get() == "def");
-        bool called{false};
-        ob->on_change([&called](const std::string&)
-                     { called = true; });
-        ob->assign("ghi");
-        assert(ob->get() == "ghi");
-        assert(called);
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        ovec.emplace(std::next(ovec.begin()), "def");
+        auto ovalue = ovec.back();
+        assert(ovalue == "def");
     }
     
     //back() const
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        vec.emplace(std::next(vec.begin()), "def");
-        const auto& cobs = obs;
-        assert(cobs.back() == "def");
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        ovec.emplace(std::next(ovec.begin()), "def");
+        const auto& covec = ovec;
+        assert(covec.back() == "def");
     }
     
     //begin()
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        auto ob = *obs.begin();
-        assert(ob->get() == "abc");
-        bool called{false};
-        ob->on_change([&called](const std::string&)
-                     { called = true; });
-        ob->assign("def");
-        assert(ob->get() == "def");
-        assert(called);
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        auto ovalue = *ovec.begin();
+        assert(ovalue == "abc");
     }
 
     //cbegin()
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        auto ob = *obs.cbegin();
-        assert(ob == "abc");
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        auto ovalue = *ovec.cbegin();
+        assert(ovalue == "abc");
     }
     
     //end/cend()
     {
-        vec.clear();
-        vec.emplace(vec.begin(), "abc");
-        assert(obs.begin() != obs.end());
-        assert(obs.cbegin() != obs.cend());
+        ovector_t ovec;
+        ovec.emplace(ovec.begin(), "abc");
+        assert(ovec.begin() != ovec.end());
+        assert(ovec.cbegin() != ovec.cend());
     }
 
     //empty()
     {
-        vec.clear();
-        assert(obs.empty());
+        ovector_t ovec;
+        assert(ovec.empty());
     }
     
     //size()
     {
-        vec.clear();
-        auto it = vec.begin();
-        vec.emplace(it, "abc");
-        vec.emplace(++it, "def");
-        assert(obs.size() == 2);
+        ovector_t ovec;
+        ovec.emplace_back("first");
+        ovec.emplace(ovec.begin(), "abc");
+        assert(ovec.size() == 2);
     }
     
     //max_size()
     {
-        vec.clear();
-        auto it = vec.begin();
-        vec.emplace(it, "abc");
-        vec.emplace(++it, "def");
-        assert(obs.max_size() >= 2);
+        ovector_t ovec;
+        ovec.emplace_back("abc");
+        ovec.emplace_back("def");
+        assert(ovec.max_size() >= 2);
     }
     
      //clear()
     {
-        vec.clear();
-        auto it = vec.begin();
-        vec.emplace(it, "abc");
-        vec.emplace(++it, "def");
+        ovector_t ovec;
+        ovec.emplace_back("abc");
+        ovec.emplace_back("def");
         bool called{false};
         bool before_called{false};
         boost::signals2::scoped_connection c1 =
-        obs.before_erase([&before_called](const vector_t& c,
-                                          vector_t::const_iterator it)
-                         {
-                             before_called = true;
-                             assert(c.end() == it);
-                         });
+            ovec.before_erase([&before_called, &ovec](ovector_t::const_iterator it)
+                              {
+                                  before_called = true;
+                                  assert(ovec.cend() == it);
+                              });
         boost::signals2::scoped_connection c2 =
-        obs.on_erase([&called](const vector_t&,
-                               vector_t::const_iterator)
-                     { called = true; });
-        obs.clear();
+            ovec.on_erase([&called](ovector_t::const_iterator)
+                          { called = true; });
+        ovec.clear();
         assert(before_called);
         assert(called);
-        assert(obs.empty());
     }
         
-     //reserve()
+    //reserve()
     {
-        vec.clear();
-        obs.reserve(100);
+        ovector_t ovec;
+        ovec.reserve(100);
     }
     
     //capacity()
     {
-        vec.clear();
-        auto it = vec.begin();
-        vec.emplace(it, "abc");
-        assert(obs.capacity() >= 1);
+        ovector_t ovec;
+        ovec.emplace_back("abc");
+        assert(ovec.capacity() >= 1);
     }
 
     //shrink_to_fit()
     {
-        vec.clear();
-        auto it = vec.begin();
-        vec.emplace(it, "abc");
-        obs.shrink_to_fit();
+        ovector_t ovec;
+        ovec.emplace_back("abc");
+        ovec.shrink_to_fit();
     }
-     //erase()
+    
+    //erase()
     {
-        vec.clear();
-        auto it = vec.begin();
-        vec.emplace(it, "abc");
-        vec.emplace(++it, "def");
+        ovector_t ovec;
+        ovec.emplace_back("abc");
+        ovec.emplace_back("def");
         bool called{false};
         bool before_called{false};
         boost::signals2::scoped_connection c1 =
-        obs.before_erase([&before_called](const vector_t& c,
-                                          vector_t::const_iterator it)
+        ovec.before_erase([&before_called](ovector_t::const_iterator it)
                          {
                              before_called = true;
                              assert(*it == "abc");
                          });
         boost::signals2::scoped_connection c2 =
-        obs.on_erase([&called](const vector_t&, vector_t::const_iterator)
-                                   { called = true; });
-        obs.erase(obs.begin());
+        ovec.on_erase([&called](ovector_t::const_iterator)
+                      { called = true; });
+        ovec.erase(ovec.begin());
         assert(before_called);
         assert(called);
-        assert(obs.size() == 1);
+        assert(ovec.size() == 1);
     }
     
-     //erase(first, last)
+    //erase(first, last)
     {
-        vec.clear();
-        auto it = vec.begin();
-        vec.emplace(it, "abc");
-        vec.emplace(++it, "def");
+        ovector_t ovec;
+        ovec.emplace_back("abc");
+        ovec.emplace_back("def");
         bool called{false};
         bool before_called{false};
         boost::signals2::scoped_connection c1 =
-        obs.before_erase([&before_called](const vector_t& c,
-                                          vector_t::const_iterator it)
+        ovec.before_erase([&before_called, &ovec](ovector_t::const_iterator it)
                          {
                              before_called = true;
-                             assert(c.begin() == it);
+                             assert(ovec.begin() == it);
                          });
         boost::signals2::scoped_connection c2 =
-        obs.on_erase([&called](const vector_t&,
-                               vector_t::const_iterator)
+        ovec.on_erase([&called](ovector_t::const_iterator)
                      { called = true; });
-        obs.erase(obs.begin(), obs.end());
+        ovec.erase(ovec.begin(), ovec.end());
         assert(before_called);
         assert(called);
-        assert(obs.empty());
+        assert(ovec.empty());
     }
     
     //emplace()
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
-        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
-                                    { called = true; });
-        auto it = vec.begin();
-        obs.emplace(it, "abc");
-        obs.emplace(++it, "def");
+        ovec.on_insert([&called](ovector_t::const_iterator)
+                       { called = true; });
+        ovec.emplace_back("abc");
+        ovec.emplace_back("def");
         assert(called);
-        assert(*obs.cbegin() == "abc");
-        assert(*std::next(obs.cbegin()) == "def");
+        assert(*ovec.cbegin() == "abc");
+        assert(*std::next(ovec.cbegin()) == "def");
     }
     
     //push_back()
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
-        obs.push_back("abc");
+        ovec.emplace_back("abc");
         boost::signals2::scoped_connection c =
-            obs.on_insert([&called](const vector_t&,
-                                                  vector_t::const_iterator it)
-                                    {
-                                        assert(*it == "def");
-                                        called = true;
-                                    });
-        obs.push_back("def");
+            ovec.on_insert([&called](ovector_t::const_iterator it)
+                           {
+                               assert(*it == "def");
+                               called = true;
+                           });
+        ovec.emplace_back("def");
         assert(called);
-        assert(*obs.cbegin() == "abc");
-        assert(*std::next(obs.cbegin()) == "def");
+        assert(*ovec.cbegin() == "abc");
+        assert(*std::next(ovec.cbegin()) == "def");
     }
     
     //emplace_back()
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
-        obs.push_back("abc");
+        ovec.emplace_back("abc");
         boost::signals2::scoped_connection c =
-            obs.on_insert([&called](const vector_t&,
-                                                  vector_t::const_iterator it)
-                                    {
-                                        assert(*it == "def");
-                                        called = true;
-                                    });
-        obs.emplace_back("def");
+            ovec.on_insert([&called](ovector_t::const_iterator it)
+                           {
+                               assert(*it == "def");
+                               called = true;
+                           });
+        ovec.emplace_back("def");
         assert(called);
-        assert(*obs.cbegin() == "abc");
-        assert(*std::next(obs.cbegin()) == "def");
+        assert(*ovec.cbegin() == "abc");
+        assert(*std::next(ovec.cbegin()) == "def");
     }
     
     //pop_back()
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
         bool before_called{false};
-        obs.push_back("abc");
+        ovec.emplace_back("abc");
         boost::signals2::scoped_connection c1 =
-        obs.before_erase([&before_called](const vector_t& c,
-                                          vector_t::const_iterator it)
+        ovec.before_erase([&before_called](ovector_t::const_iterator it)
                          {
                              before_called = true;
                              assert(*it == "abc");
                          });
         boost::signals2::scoped_connection c2 =
-            obs.on_erase([&called](const vector_t&,
-                                                  vector_t::const_iterator it)
-                                    {
-                                        called = true;
-                                    });
-        obs.pop_back();
+            ovec.on_erase([&called](ovector_t::const_iterator it)
+                          {
+                              called = true;
+                          });
+        ovec.pop_back();
         assert(before_called);
         assert(called);
-        assert(obs.empty());
+        assert(ovec.empty());
     }
     
     //insert(pos, const value_type&)
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
-        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
-                                    { called = true; });
-        auto it = vec.begin();
+        ovec.on_insert([&called](ovector_t::const_iterator)
+                       { called = true; });
         std::string v = "abc";
-        obs.insert(it, v);
+        ovec.insert(ovec.begin(), v);
         std::string v2 = "def";
-        obs.insert(++it, v2);
+        ovec.insert(std::next(ovec.begin()), v2);
         assert(called);
-        assert(*obs.cbegin() == "abc");
-        assert(*std::next(obs.cbegin()) == "def");
+        assert(*ovec.cbegin() == "abc");
+        assert(*std::next(ovec.cbegin()) == "def");
     }
 
     //insert(pos, value_type&&)
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
-        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
-                                    { called = true; });
-        auto it = vec.begin();
-        obs.insert(it, "abc");
-        obs.insert(++it, "def");
+        ovec.on_insert([&called](ovector_t::const_iterator)
+                       { called = true; });
+        std::string v = "abc";
+        ovec.insert(ovec.begin(), v);
+        std::string v2 = "def";
+        ovec.insert(std::next(ovec.begin()), v2);
         assert(called);
-        assert(*obs.cbegin() == "abc");
-        assert(*std::next(obs.cbegin()) == "def");
+        assert(*ovec.cbegin() == "abc");
+        assert(*std::next(ovec.cbegin()) == "def");
     }
     
     //insert(pos, count, const value_type&)
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
-        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
-                                    { called = true; });
-        auto it = vec.begin();
-        obs.insert(it, 2, "abc");
+        ovec.on_insert([&called](ovector_t::const_iterator)
+                       { called = true; });
+        auto it = ovec.begin();
+        ovec.insert(it, 2, "abc");
         assert(called);
-        assert(*std::next(obs.cbegin()) == "abc");
+        assert(*std::next(ovec.cbegin()) == "abc");
     }
     
     //insert(pos, first, last)
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
-        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
-                                    { called = true; });
+        ovec.on_insert([&called](ovector_t::const_iterator)
+                       { called = true; });
         std::array<std::string, 2> a{{"abc", "def"}};
-        obs.insert(vec.begin(), a.cbegin(), a.cend());
+        ovec.insert(ovec.begin(), a.cbegin(), a.cend());
         assert(called);
-        assert(*obs.cbegin() == "abc");
-        assert(*std::next(obs.cbegin()) == "def");
+        assert(*ovec.cbegin() == "abc");
+        assert(*std::next(ovec.cbegin()) == "def");
     }
 
     //insert(ilist)
     {
-        vec.clear();
+        ovector_t ovec;
         bool called{false};
-        obs.on_insert([&called](const vector_t&, vector_t::const_iterator)
-                                    { called = true; });
-        obs.insert(vec.begin(), {"abc", "def"});
+        ovec.on_insert([&called](ovector_t::const_iterator)
+                       { called = true; });
+        ovec.insert(ovec.begin(), {std::string{"abc"}, std::string{"def"}});
         assert(called);
-        assert(*obs.cbegin() == "abc");
-        assert(*std::next(obs.cbegin()) == "def");
+        assert(*ovec.cbegin() == "abc");
+        assert(*std::next(ovec.cbegin()) == "def");
     }
 
 }

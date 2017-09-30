@@ -15,90 +15,71 @@
 
 #include <type_traits>
 
-namespace observable { 
+namespace observable {
 
-template<typename Observed_>
-struct variant;
-    
-template<typename Observed>
-struct observable_of<
-    Observed,
-    typename std::enable_if<is_variant<Observed>::value>::type
->
+template<typename... T>
+class variant
 {
-    using type = variant<Observed>;
-};
+    boost::variant<T...> _variant;    
+    boost::signals2::signal<void()> _on_change, _on_change_type;
+public:
+    using Model = boost::variant<T...>;
     
-template<typename ObservableVariant>
-struct set_variant_t
-{
-    using result_type = void;
+    variant() = default;
 
-    set_variant_t(ObservableVariant& ovariant)
-        : _ovariant(ovariant)
+    template<typename U>
+    variant(U o)
+        : _variant(std::move(o))
     {}
     
-    template<typename T>
-    result_type operator()(T& o) const
-    {    
-        using observable_t = observable_of_t
-            <typename std::decay<T>::type>;
-        _ovariant = observable_t(observable_factory(o));
-    }
-    ObservableVariant& _ovariant;
-};
-    
-template<typename Observed_>
-struct variant
-{
-    using Observed = Observed_;
-    using types = typename Observed::types;
-    using observable_variant_t = typename boost::make_variant_over<
-        typename boost::mpl::transform<
-          types,
-          observable_of<boost::mpl::_1>
-        >::type
-    >::type;
+    //?
+    variant(const variant& rhs)
+        : _variant(rhs._variant)
+    {}
 
-    variant() = default;
-    
-    variant(Observed& observed)
-        : _observed(&observed)
-    { assign(*_observed); }
-
-    template<typename T>
-    variant& operator=(T&& o)
+    //?
+    variant& operator=(const variant& rhs)
     {
-        assign(std::forward<T>(o));
+        auto before_type = _variant.which();
+        _variant = rhs._variant;
+        if(before_type != _variant.which())
+            _on_change_type();
+        _on_change();
         return *this;
     }
+
+    variant& operator=(variant&&) = default;
+
+    const boost::variant<T...>& model() const noexcept
+    { return _variant; }
     
-    void assign(Observed o)
+    template<typename U>
+    variant& operator=(U&& o)
     {
-        auto before_type = _ovariant.which();
-        *_observed = std::move(o);
-        
-        set_variant_t<observable_variant_t> set_variant(_ovariant);
-        
-        boost::apply_visitor(set_variant, *_observed);
-
-        if(before_type != _ovariant.which()) _on_change_type(*_observed);
-        _on_change(*_observed);
+        auto before_type = _variant.which();
+        _variant = std::forward<U>(o);
+        if(before_type != _variant.which())
+            _on_change_type();
+        _on_change();
+        return *this;
     }
-    
-    const Observed& get() const noexcept
-    { return *_observed; }
-    
+        
     template<typename Visitor>
-    void apply_visitor(Visitor&& visitor)
-    { boost::apply_visitor(std::forward<Visitor>(visitor), _ovariant); }
+    typename std::decay<Visitor>::type::result_type
+    visit(Visitor&& visitor)
+    { return boost::apply_visitor(std::forward<Visitor>(visitor), _variant); }
 
+    template<typename Visitor>
+    typename std::decay<Visitor>::type::result_type
+    visit(Visitor&& visitor) const
+    { return boost::apply_visitor(std::forward<Visitor>(visitor), _variant); }
+    
     template<typename... Fs>
     inline void match(Fs&&... fs)
     {
         auto visitor = detail::match_visitor<typename std::decay<Fs>::type...>
             (std::forward<Fs>(fs)...);
-        apply_visitor(std::move(visitor));
+        visit(std::move(visitor));
     }
     
     template<typename F>
@@ -108,12 +89,6 @@ struct variant
     template<typename F>
     boost::signals2::connection on_change_type(F&& f)
     { return _on_change_type.connect(std::forward<F>(f)); }
-    
-    Observed* _observed{nullptr};
-    
-    observable_variant_t _ovariant;
-    
-    boost::signals2::signal<void(const Observed&)> _on_change, _on_change_type;
 };
-    
+
 }
