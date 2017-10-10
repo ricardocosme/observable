@@ -7,33 +7,93 @@
 #pragma once
 
 #include "observable/is_observable.hpp"
+#include "observable/proxy.hpp"
 
 #include <boost/signals2.hpp>
 #include <boost/iterator.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
-#include <memory>
+
 #include <unordered_map>
 
 namespace observable {
 
-template<typename Key, typename T, typename Enable = void>
+template<typename Key,
+         typename T,
+         typename Hash = std::hash<Key>,
+         typename KeyEqual = std::equal_to<Key>,
+         typename Allocator = std::allocator<std::pair<const Key, T>>,
+         template <typename, typename, typename,
+                   typename, typename> class Model_ = std::unordered_map,
+         typename Enable = void
+         >
 class unordered_map;
         
-template<typename Key, typename T>
+template<typename Observable>    
+class unordered_map_iterator
+    : public boost::iterator_adaptor<
+        unordered_map_iterator<Observable>,
+        typename Observable::Model::iterator,
+        proxy<Observable>,
+        boost::forward_traversal_tag,
+        proxy<Observable>,
+        typename Observable::Model::difference_type
+    >
+{
+public:
+    unordered_map_iterator() = default;
+
+    explicit unordered_map_iterator
+    (Observable& observable, typename Observable::Model::iterator it)
+        : unordered_map_iterator::iterator_adaptor_(it)
+        , _observable(&observable)
+    {}
+private:
+    friend class boost::iterator_core_access;
+    
+    proxy<Observable> dereference() const
+    { return {*_observable, this->base_reference()}; }
+    
+    Observable* _observable{nullptr};    
+};
+    
+template<typename Key,
+         typename T,
+         typename Hash,
+         typename KeyEqual,
+         typename Allocator,
+         template <typename, typename, typename,
+                   typename, typename> class Model_
+         >
 class unordered_map<
     Key,
     T,
+    Hash,
+    KeyEqual,
+    Allocator,
+    Model_,
     typename std::enable_if<!is_observable<T>::value>::type
->
+    >
 {
-    using container_t = std::unordered_map<Key, T>;
+    using container_t = Model_<Key, T, Hash, KeyEqual, Allocator>;
     container_t _container;
     
-    boost::signals2::signal<void(typename container_t::const_iterator)>
-    _on_erase, _on_insert, _before_erase;
+    boost::signals2::signal<
+        bool(const unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>&,
+             typename container_t::const_iterator)>
+    _before_erase;
     
-    boost::signals2::signal<void()> _on_change;
+    boost::signals2::signal<
+        void(const unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>&,
+             typename container_t::const_iterator)>
+    _after_erase, _after_insert, _on_value_change;
+    
+    boost::signals2::signal<
+        void(const unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>&)>
+    _on_change;
 
+    friend class proxy<unordered_map<Key, T, Hash, KeyEqual, Allocator,
+                                     Model_>>;
+    
 public:
     
     using Model = container_t;
@@ -43,11 +103,13 @@ public:
     using value_type = typename container_t::value_type;
     using key_equal = typename container_t::key_equal;
     using hasher = typename container_t::hasher;
-    using reference = typename container_t::reference;
+    using reference = proxy<
+        unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>>;
     using const_reference = typename container_t::const_reference;
-    using pointer = typename container_t::pointer;
+    using pointer = reference*;
     using const_pointer = typename container_t::const_pointer;
-    using iterator = typename container_t::iterator;
+    using iterator = unordered_map_iterator<
+        unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>>;
     using const_iterator = typename container_t::const_iterator;
     //TODO local_iterator
     using const_local_iterator = typename container_t::const_local_iterator;
@@ -55,7 +117,9 @@ public:
     using difference_type = typename container_t::difference_type;
     using allocator_type = typename container_t::allocator_type;
 
-    explicit unordered_map(size_type n = 10)
+    unordered_map() = default;
+    
+    explicit unordered_map(size_type n)
         : _container(n)
     {}
 
@@ -71,7 +135,7 @@ public:
     {}
     
     iterator begin() noexcept
-    { return _container.begin(); }
+    { return iterator{*this, _container.begin()}; }
 
     const_iterator begin() const noexcept
     { return _container.begin(); }
@@ -80,7 +144,7 @@ public:
     { return _container.cbegin(); }
     
     iterator end() noexcept
-    { return _container.end(); }
+    { return iterator{*this, _container.end()}; }
     
     const_iterator end() const noexcept
     { return _container.end(); }
@@ -99,10 +163,10 @@ public:
 
     void clear() noexcept
     {
-        _before_erase(_container.cend());
+        _before_erase(*this, _container.cend());
         _container.clear();
-        _on_erase(_container.cend());
-        _on_change();
+        _after_erase(*this, _container.cend());
+        _on_change(*this);
     }
     
     std::pair<iterator, bool> insert
@@ -111,8 +175,8 @@ public:
         auto ret = _container.insert(value);
         if (ret.second)
         {
-            _on_insert(ret.first);
-            _on_change();
+            _after_insert(*this, ret.first);
+            _on_change(*this);
         }
         return ret;
     }
@@ -122,8 +186,8 @@ public:
         auto ret = _container.insert(std::move(value));
         if (ret.second)
         {
-            _on_insert(ret.first);
-            _on_change();
+            _after_insert(*this, ret.first);
+            _on_change(*this);
         }
         return ret;
     }
@@ -135,8 +199,8 @@ public:
         auto it = _container.insert(hint, value);
         if (_container.size() != before_size)
         {
-            _on_insert(it);
-            _on_change();
+            _after_insert(*this, it);
+            _on_change(*this);
         }
         return it;
     }
@@ -148,8 +212,8 @@ public:
         _container.insert(first, last);
         if (_container.size() != before_size)
         {
-            _on_insert(const_iterator{}); //TODO
-            _on_change();
+            _after_insert(*this, const_iterator{}); //TODO
+            _on_change(*this);
         }
     }
     
@@ -162,8 +226,8 @@ public:
         auto ret = _container.emplace(std::forward<Args>(args)...);
         if (ret.second)
         {
-            _on_insert(ret.first);
-            _on_change();
+            _after_insert(*this, ret.first);
+            _on_change(*this);
         }
         return ret;
     }
@@ -176,18 +240,18 @@ public:
         auto it = _container.emplace_hint(hint, std::forward<Args>(args)...);
         if (_container.size() != before_size)
         {
-            _on_insert(it);
-            _on_change();
+            _after_insert(*this, it);
+            _on_change(*this);
         }
         return it;
     }
     
     iterator erase(const_iterator pos)        
     {
-        _before_erase(pos);
+        _before_erase(*this, pos);
         auto it = _container.erase(pos);
-        _on_erase(it);
-        _on_change();
+        _after_erase(*this, it);
+        _on_change(*this);
         return it;
     }
     
@@ -195,10 +259,10 @@ public:
                    const_iterator last)        
     {
         //TODO range?
-        _before_erase(first);
+        _before_erase(*this, first);
         auto it = _container.erase(first, last);
-        _on_erase(it);
-        _on_change();
+        _after_erase(*this, it);
+        _on_change(*this);
         return it;
     }
     
@@ -207,26 +271,32 @@ public:
         auto rng = _container.equal_range(key);
         if(rng.first == _container.end()) return 0;
         auto before_size = _container.size();
-        _before_erase(rng.first);
+        _before_erase(*this, rng.first);
         _container.erase(rng.first, rng.second);
         auto n = before_size - _container.size();
         if (n > 0)
         {
-            _on_erase(rng.second);
-            _on_change();
+            _after_erase(*this, rng.second);
+            _on_change(*this);
         }
         return n;
     }
     
     void swap(container_t& other)
     {
-        _before_erase(_container.cend());
+        _before_erase(*this, _container.cend());
         _container.swap(other);
         //TODO: check?
-        _on_insert(const_iterator{});
-        _on_erase(const_iterator{});
-        _on_change();
+        _after_insert(*this, const_iterator{});
+        _after_erase(*this, const_iterator{});
+        _on_change(*this);
     }
+    
+    void rehash(size_type n)
+    { return _container.rehash(n); }
+    
+    void reserve(size_type n)
+    { return _container.reserve(n); }
     
     mapped_type& at(const key_type& key)
     { return _container.at(key); }
@@ -239,7 +309,7 @@ public:
     
     mapped_type& operator[](key_type&& key)
     { return _container[std::move(key)]; }
-    
+        
     size_type count
     (const key_type& key) const noexcept
     { return _container.count(key); }
@@ -268,12 +338,12 @@ public:
     { return _before_erase.connect(std::forward<F>(f)); }
     
     template<typename F>
-    boost::signals2::connection on_erase(F&& f)
-    { return _on_erase.connect(std::forward<F>(f)); }
+    boost::signals2::connection after_erase(F&& f)
+    { return _after_erase.connect(std::forward<F>(f)); }
     
     template<typename F>
-    boost::signals2::connection on_insert(F&& f)
-    { return _on_insert.connect(std::forward<F>(f)); }
+    boost::signals2::connection after_insert(F&& f)
+    { return _after_insert.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
@@ -290,10 +360,11 @@ class unordered_map<
     using container_t = std::unordered_map<Key, T>;
     container_t _container;
     
-    boost::signals2::signal<void(typename container_t::const_iterator)>
-    _on_erase, _on_insert, _before_erase, _on_value_change;
+    boost::signals2::signal<void(const unordered_map<Key, T>&,
+                                 typename container_t::const_iterator)>
+    _after_erase, _after_insert, _before_erase, _on_value_change;
     
-    boost::signals2::signal<void()> _on_change;
+    boost::signals2::signal<void(const unordered_map<Key, T>&)> _on_change;
 
     std::unordered_map<
         typename container_t::const_pointer,
@@ -309,8 +380,8 @@ class unordered_map<
               {
                   auto it = _container.find(e.first);
                   assert(it != _container.end());
-                  _on_value_change(it);
-                  _on_change();
+                  _on_value_change(*this, it);
+                  _on_change(*this);
               }));             
     }
     
@@ -352,8 +423,8 @@ public:
     
     unordered_map(unordered_map&& rhs)
         : _container(std::move(rhs._container))
-        , _on_erase(std::move(rhs._on_erase))
-        , _on_insert(std::move(rhs._on_insert))
+        , _after_erase(std::move(rhs._after_erase))
+        , _after_insert(std::move(rhs._after_insert))
         , _before_erase(std::move(rhs._before_erase))
         , _on_value_change(std::move(rhs._on_value_change))
         , _on_change(std::move(rhs._on_change))
@@ -366,8 +437,8 @@ public:
     unordered_map& operator=(unordered_map&& rhs)
     {
         _container = std::move(rhs._container);
-        _on_erase = std::move(rhs._on_erase);
-        _on_insert = std::move(rhs._on_insert);
+        _after_erase = std::move(rhs._after_erase);
+        _after_insert = std::move(rhs._after_insert);
         _before_erase = std::move(rhs._before_erase);
         _on_value_change = std::move(rhs._on_value_change);
         _on_change = std::move(rhs._on_change);
@@ -407,10 +478,10 @@ public:
 
     void clear() noexcept
     {
-        _before_erase(_container.cend());
+        _before_erase(*this, _container.cend());
         _container.clear();
-        _on_erase(_container.cend());
-        _on_change();
+        _after_erase(*this, _container.cend());
+        _on_change(*this);
     }
     
     std::pair<iterator, bool> insert
@@ -419,8 +490,8 @@ public:
         auto ret = _container.insert(value);
         if (ret.second)
         {
-            _on_insert(ret.first);
-            _on_change();
+            _after_insert(*this, ret.first);
+            _on_change(*this);
             insert_value_change_conn(*ret.first);
         }
         return ret;
@@ -431,8 +502,8 @@ public:
         auto ret = _container.insert(std::move(value));
         if (ret.second)
         {
-            _on_insert(ret.first);
-            _on_change();
+            _after_insert(*this, ret.first);
+            _on_change(*this);
             insert_value_change_conn(*ret.first);
         }
         return ret;
@@ -445,8 +516,8 @@ public:
         auto it = _container.insert(hint, std::move(value));
         if (_container.size() != before_size)
         {
-            _on_insert(it);
-            _on_change();
+            _after_insert(*this, it);
+            _on_change(*this);
             insert_value_change_conn(*it);
         }
         return it;
@@ -459,8 +530,8 @@ public:
         _container.insert(first, last);
         if (_container.size() != before_size)
         {
-            _on_insert(const_iterator{}); //TODO
-            _on_change();
+            _after_insert(*this, const_iterator{}); //TODO
+            _on_change(*this);
             //TODO
             // std::for_each(it, it + std::distance(first, last),
             //               [this](value_type& e)
@@ -479,8 +550,8 @@ public:
         auto ret = _container.emplace(std::forward<Args>(args)...);
         if (ret.second)
         {
-            _on_insert(ret.first);
-            _on_change();
+            _after_insert(*this, ret.first);
+            _on_change(*this);
             insert_value_change_conn(*ret.first);
         }
         return ret;
@@ -494,8 +565,8 @@ public:
         auto it = _container.emplace_hint(hint, std::forward<Args>(args)...);
         if (_container.size() != before_size)
         {
-            _on_insert(it);
-            _on_change();
+            _after_insert(*this, it);
+            _on_change(*this);
             insert_value_change_conn(*it);
         }
         return it;
@@ -503,11 +574,11 @@ public:
     
     iterator erase(const_iterator pos)        
     {
-        _before_erase(pos);
+        _before_erase(*this, pos);
         _ptr2value.erase(&*pos);
         auto it = _container.erase(pos);
-        _on_erase(it);
-        _on_change();
+        _after_erase(*this, it);
+        _on_change(*this);
         return it;
     }
     
@@ -515,13 +586,13 @@ public:
                    const_iterator last)        
     {
         //TODO range?
-        _before_erase(first);
+        _before_erase(*this, first);
         std::for_each(first, last,
                       [this](const value_type& e)
                       { _ptr2value.erase(&e); });
         auto it = _container.erase(first, last);
-        _on_erase(it);
-        _on_change();
+        _after_erase(*this, it);
+        _on_change(*this);
         return it;
     }
     
@@ -531,25 +602,25 @@ public:
         if(rng.first == _container.end()) return 0;
         auto before_size = _container.size();
         _ptr2value.erase(&*rng.first);
-        _before_erase(rng.first);
+        _before_erase(*this, rng.first);
         _container.erase(rng.first, rng.second);
         auto n = before_size - _container.size();
         if (n > 0)
         {
-            _on_erase(rng.second);
-            _on_change();
+            _after_erase(*this, rng.second);
+            _on_change(*this);
         }
         return n;
     }
     
     void swap(container_t& other)
     {
-        _before_erase(_container.cend());
+        _before_erase(*this, _container.cend());
         _container.swap(other);
         //TODO: check?
-        _on_insert(const_iterator{});
-        _on_erase(const_iterator{});
-        _on_change();
+        _after_insert(*this, const_iterator{});
+        _after_erase(*this, const_iterator{});
+        _on_change(*this);
     }
 
     void rehash(size_type n)
@@ -598,12 +669,12 @@ public:
     { return _before_erase.connect(std::forward<F>(f)); }
     
     template<typename F>
-    boost::signals2::connection on_erase(F&& f)
-    { return _on_erase.connect(std::forward<F>(f)); }
+    boost::signals2::connection after_erase(F&& f)
+    { return _after_erase.connect(std::forward<F>(f)); }
     
     template<typename F>
-    boost::signals2::connection on_insert(F&& f)
-    { return _on_insert.connect(std::forward<F>(f)); }
+    boost::signals2::connection after_insert(F&& f)
+    { return _after_insert.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)
@@ -613,5 +684,8 @@ public:
     boost::signals2::connection on_value_change(F&& f)
     { return _on_value_change.connect(std::forward<F>(f)); }    
 };
+    
+template<typename Key, typename T>
+struct is_observable<unordered_map<Key, T>> : std::true_type {};
     
 }

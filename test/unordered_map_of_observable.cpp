@@ -1,26 +1,41 @@
-#include "observable/value.hpp"
+#include "observable/class.hpp"
 #include "observable/unordered_map.hpp"
 
 #include <array>
+#include <iostream>
 #include <string>
+#include <unordered_map>
 
-using obs_t = observable::unordered_map<
-    std::size_t, observable::value<std::string>>;
+using map_t = std::unordered_map<std::size_t, std::string>;
+
+struct foo_t
+{
+    map_t map;
+};
+
+struct map{};
+
+using obs_t = observable::class_<
+    foo_t,
+    std::pair<map_t, map>
+    >;
 
 int main()
 {
-    using m_t = observable::unordered_map<std::string, observable::value<double>>;
-    m_t m;
-    m.emplace("hi", m_t::mapped_type{4.5});
-    
-    obs_t obs;
+    foo_t foo;
+    obs_t obs(foo, foo.map);
 
+    //map_iterator default constructed
+    {
+        observable::observable_of_t<map_t>::iterator i;
+    }
+    
     //at fail
     {
         bool ok{false};
         try
         {
-            obs.at(0);
+            obs.get<map>().at(0);
         }
         catch(const std::out_of_range&)
         { ok = true; }
@@ -30,18 +45,18 @@ int main()
     //at success
     {
         bool ok{true};
-        obs.clear();
-        obs.emplace(2, "abc");
-        // bool called{false};
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
         try
         {
-            obs.at(2);
-        //     assert(ob->get() == "abc");
-        //     ob->on_change([&called](const std::string&)
-        //                   { called = true; });
-        //     ob->assign("def");
-        //     assert(ob->get() == "def");
-        //     assert(called);
+            bool called{false};
+            auto ob = obs.get<map>().at(2);
+            assert(ob->get() == "abc");
+            ob->on_change([&called](const std::string&)
+                          { called = true; });
+            ob->assign("def");
+            assert(ob->get() == "def");
+            assert(called);
         }
         catch(const std::out_of_range&)
         { ok = false; }
@@ -53,7 +68,7 @@ int main()
         bool ok{false};
         try
         {
-            const auto& co = obs;
+            const auto& co = obs.get<map>();
             co.at(0);
         }
         catch(const std::out_of_range&)
@@ -64,13 +79,13 @@ int main()
     //at const success
     {
         bool ok{true};
-        obs.clear();
-        obs.emplace(2, "abc");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
         try
         {
-            const auto& co = obs;
-            auto& v = co.at(2);
-            assert(v.get() == "abc");
+            const auto& co = obs.get<map>();
+            auto v = co.at(2);
+            assert(v == "abc");
         }
         catch(const std::out_of_range&)
         { ok = false; }
@@ -80,360 +95,361 @@ int main()
     //operator[] lvalue insert
     {
         bool called{false};
-        obs_t::key_type k = 0;
-        auto& ob = obs[k];
-        //TODO
-        // assert(ob == obs_t::mapped_type{});
-        ob.on_change([&called](std::string)
-                      { called = true; });
-        ob = "def";
-        assert(ob.get() == "def");
+        map_t::key_type k = 0;
+        auto ob = obs.get<map>()[k];
+        assert(ob->get() == map_t::mapped_type{});
+        ob->on_change([&called](const std::string&)
+                     { called = true; });
+        ob->assign("def");
+        assert(ob->get() == "def");
         assert(called);
     }
 
     //operator[] lvalue lookup
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs_t::key_type k = 2;
-        auto& ob = obs[k];
-        assert(ob.get() == "abc");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        map_t::key_type k = 2;
+        auto ob = obs.get<map>()[k];
+        assert(ob->get() == "abc");
         bool called{false};
-        ob.on_change([&called](std::string)
+        ob->on_change([&called](const std::string&)
                      { called = true; });
-        ob = "def";
-        assert(ob.get() == "def");
+        ob->assign("def");
+        assert(ob->get() == "def");
         assert(called);
     }
     
-    // //operator[] rvalue insert
-    // {
-    //     auto& ob = obs[1];
-    //     assert(ob == obs_t::mapped_type{});
-    // }
+    //operator[] rvalue insert
+    {
+        auto ob = obs.get<map>()[1];
+        assert(ob->get() == map_t::mapped_type{});
+    }
 
     //operator[] rvalue lookup
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        auto& ob = obs[2];
-        assert(ob.get() == "abc");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        auto ob = obs.get<map>()[2];
+        assert(ob->get() == "abc");
         bool called{false};
-        ob.on_change([&called](std::string)
-                      { called = true; });
-        ob = "def";
-        assert(ob.get() == "def");
+        ob->on_change([&called](const std::string&)
+                     { called = true; });
+        ob->assign("def");
+        assert(ob->get() == "def");
         assert(called);
     }
 
     //begin()
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        auto& ob = obs.begin()->second;
-        assert(ob.get() == "abc");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        auto ob = obs.get<map>().begin()->second;
+        assert(ob->get() == "abc");
         bool called{false};
-        ob.on_change([&called](std::string)
-                      { called = true; });
-        ob = "def";
-        assert(ob.get() == "def");
+        ob->on_change([&called](const std::string&)
+                     { called = true; });
+        ob->assign("def");
+        assert(ob->get() == "def");
         assert(called);
     }
 
     //cbegin()
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        auto& ob = obs.cbegin()->second;
-        assert(ob.get() == "abc");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        auto ob = obs.get<map>().cbegin()->second;
+        assert(ob == "abc");
     }
     
     //end/cend()
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        assert(obs.begin() != obs.end());
-        assert(obs.cbegin() != obs.cend());
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        assert(obs.get<map>().begin() != obs.get<map>().end());
+        assert(obs.get<map>().cbegin() != obs.get<map>().cend());
     }
 
     //empty()
     {
-        obs.clear();
-        assert(obs.empty());
+        foo.map.clear();
+        assert(obs.get<map>().empty());
     }
     
     //size()
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
-        assert(obs.size() == 2);
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
+        assert(obs.get<map>().size() == 2);
     }
     
     //max_size()
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
-        assert(obs.max_size() >= 2);
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
+        assert(obs.get<map>().max_size() >= 2);
     }
     
      //clear()
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
         bool called{false};
         bool before_called{false};
         boost::signals2::scoped_connection c1 =
-            obs.before_erase
-            ([&before_called, &obs](obs_t::const_iterator it)
+            obs.get<map>().before_erase
+            ([&before_called](const map_t& m, map_t::const_iterator it)
              {
                  before_called = true;
-                 assert(obs.end() == it);
+                 assert(m.end() == it);
              });
         boost::signals2::scoped_connection c2 =
-            obs.on_erase
-            ([&called](obs_t::const_iterator)
+            obs.get<map>().on_erase
+            ([&called](const map_t&, map_t::value_type, map_t::const_iterator)
              { called = true; });
-        obs.clear();
+        obs.get<map>().clear();
         assert(before_called);
         assert(called);
-        assert(obs.empty());
+        assert(obs.get<map>().empty());
     }
     
     //erase()
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
         bool called{false};
         bool before_called{false};
         boost::signals2::scoped_connection c1 =
-            obs.before_erase
-            ([&before_called, &obs](obs_t::const_iterator it)
+            obs.get<map>().before_erase
+            ([&before_called](const map_t& m, map_t::const_iterator it)
              {
                  before_called = true;
-                 assert(it != obs.end());
+                 assert(it != m.end());
              });
         boost::signals2::scoped_connection c2 =
-            obs.on_erase
-            ([&called](obs_t::const_iterator)
+            obs.get<map>().on_erase
+            ([&called](const map_t&, map_t::value_type, map_t::const_iterator)
              { called = true; });
-        obs.erase(obs.cbegin());
+        obs.get<map>().erase(obs.get<map>().cbegin());
         assert(before_called);
         assert(called);
-        assert(obs.size() == 1);
+        assert(obs.get<map>().size() == 1);
     }
     
      //erase(first, last)
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
         bool called{false};
         bool before_called{false};
         boost::signals2::scoped_connection c1 =
-            obs.before_erase
-            ([&before_called, &obs](obs_t::const_iterator it)
+            obs.get<map>().before_erase
+            ([&before_called](const map_t& m, map_t::const_iterator it)
              {
                  before_called = true;
-                 assert(it != obs.end());
+                 assert(it != m.end());
              });
         boost::signals2::scoped_connection c2 =
-            obs.on_erase
-            ([&called](obs_t::const_iterator)
+            obs.get<map>().on_erase
+            ([&called](const map_t&, map_t::value_type, map_t::const_iterator)
              { called = true; });
-        obs.erase(obs.cbegin(), obs.cend());
+        obs.get<map>().erase(obs.get<map>().cbegin(), obs.get<map>().cend());
         assert(before_called);
         assert(called);
-        assert(obs.empty());
+        assert(obs.get<map>().empty());
     }
     
      //erase(key)
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
         bool called{false};
         bool before_called{false};
         boost::signals2::scoped_connection c1 =
-            obs.before_erase
-            ([&before_called](obs_t::const_iterator it)
+            obs.get<map>().before_erase
+            ([&before_called](const map_t& m, map_t::const_iterator it)
              {
                  before_called = true;
-                 assert(it->second.get() == "abc");
+                 assert(it->second == "abc");
              });
         boost::signals2::scoped_connection c2 =
-            obs.on_erase
-            ([&called](obs_t::const_iterator)
+            obs.get<map>().on_erase
+            ([&called](const map_t&,
+                       map_t::value_type v,
+                       map_t::const_iterator)
              {
+                 assert(v.second == "abc");
                  called = true;
              });
-        obs.erase(2);
+        obs.get<map>().erase(2);
         assert(called);
-        auto& crmap = obs;
-        assert(crmap.find(3)->second.get() == "def");
+        auto crmap = obs.get<map>().get();
+        assert(crmap.find(3)->second == "def");
     }
     
     //emplace()
     {
-        obs.clear();
+        foo.map.clear();
         bool called{false};
-        obs.on_insert([&called](obs_t::const_iterator)
+        obs.get<map>().on_insert([&called](const map_t&, map_t::const_iterator)
                                  { called = true; });
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
+        obs.get<map>().emplace(2, "abc");
+        obs.get<map>().emplace(3, "def");
         assert(called);
-        auto& crmap = obs;
-        assert(crmap.find(2)->second.get() == "abc");
-        assert(crmap.find(3)->second.get() == "def");
+        auto crmap = obs.get<map>().get();
+        assert(crmap.find(2)->second == "abc");
+        assert(crmap.find(3)->second == "def");
     }
     
     //emplace_hint()
     {
-        obs.clear();
+        foo.map.clear();
         bool called{false};
-        obs.on_insert([&called](obs_t::const_iterator)
+        obs.get<map>().on_insert([&called](const map_t&, map_t::const_iterator)
                                  { called = true; });
-        obs.emplace_hint(obs.cbegin(), 2, "abc");
-        obs.emplace_hint(obs.cbegin(),3, "def");
+        obs.get<map>().emplace_hint(foo.map.cbegin(), 2, "abc");
+        obs.get<map>().emplace_hint(foo.map.cbegin(),3, "def");
         assert(called);
-        auto& crmap = obs;
-        assert(crmap.find(2)->second.get() == "abc");
-        assert(crmap.find(3)->second.get() == "def");
+        auto crmap = obs.get<map>().get();
+        assert(crmap.find(2)->second == "abc");
+        assert(crmap.find(3)->second == "def");
     }
     
-    // //insert(const value_type&)
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs.on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     auto v = obs_t::value_type(2, "abc");
-    //     obs.insert(v);
-    //     auto v2 = obs_t::value_type(3, "def");
-    //     obs.insert(v2);
-    //     assert(called);
-    //     auto& crmap = obs;
-    //     assert(crmap.find(2)->second.get() == "abc");
-    //     assert(crmap.find(3)->second.get() == "def");
-    // }
+    //insert(const value_type&)
+    {
+        foo.map.clear();
+        bool called{false};
+        obs.get<map>().on_insert([&called](const map_t&, map_t::const_iterator)
+                                 { called = true; });
+        auto v = map_t::value_type(2, "abc");
+        obs.get<map>().insert(v);
+        auto v2 = map_t::value_type(3, "def");
+        obs.get<map>().insert(v2);
+        assert(called);
+        auto crmap = obs.get<map>().get();
+        assert(crmap.find(2)->second == "abc");
+        assert(crmap.find(3)->second == "def");
+    }
 
     //insert(value_type&&)
     {
-        obs.clear();
+        foo.map.clear();
         bool called{false};
-        obs.on_insert([&called](obs_t::const_iterator)
+        obs.get<map>().on_insert([&called](const map_t&, map_t::const_iterator)
                                  { called = true; });
-        obs.insert(obs_t::value_type(2, "abc"));
-        obs.insert(obs_t::value_type(3, "def"));
+        obs.get<map>().insert(map_t::value_type(2, "abc"));
+        obs.get<map>().insert(map_t::value_type(3, "def"));
         assert(called);
-        auto& crmap = obs;
-        assert(crmap.find(2)->second.get() == "abc");
-        assert(crmap.find(3)->second.get() == "def");
+        auto crmap = obs.get<map>().get();
+        assert(crmap.find(2)->second == "abc");
+        assert(crmap.find(3)->second == "def");
     }
     
     //insert(hint, value_type&&)
     {
-        obs.clear();
+        foo.map.clear();
         bool called{false};
-        obs.on_insert([&called](obs_t::const_iterator)
+        obs.get<map>().on_insert([&called](const map_t&, map_t::const_iterator)
                                  { called = true; });
-        obs.insert(obs.cbegin(), obs_t::value_type(2, std::string{"abc"}));
-        obs.insert(obs.cbegin(), obs_t::value_type(3, std::string{"def"}));
+        obs.get<map>().insert(foo.map.cbegin(), map_t::value_type(2, "abc"));
+        obs.get<map>().insert(foo.map.cbegin(), map_t::value_type(3, "def"));
         assert(called);
-        auto& crmap = obs;
-        assert(crmap.find(2)->second.get() == "abc");
-        assert(crmap.find(3)->second.get() == "def");
+        auto crmap = obs.get<map>().get();
+        assert(crmap.find(2)->second == "abc");
+        assert(crmap.find(3)->second == "def");
     }
     
     //insert(first, last)
     {
-        obs.clear();
+        foo.map.clear();
         bool called{false};
-        obs.on_insert([&called](obs_t::const_iterator)
+        obs.get<map>().on_insert([&called](const map_t&, map_t::const_iterator)
                                  { called = true; });
         std::array<std::pair<std::size_t, std::string>, 2> a{{ {2, "abc"}, {3, "def"} }};
-        obs.insert(a.cbegin(), a.cend());
+        obs.get<map>().insert(a.cbegin(), a.cend());
         assert(called);
-        auto& crmap = obs;
-        assert(crmap.find(2)->second.get() == "abc");
-        assert(crmap.find(3)->second.get() == "def");
+        auto crmap = obs.get<map>().get();
+        assert(crmap.find(2)->second == "abc");
+        assert(crmap.find(3)->second == "def");
     }
 
-    // //insert(ilist)
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs.on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     obs.insert({ {2, std::string{"abc"}}, {3, std::string{"def"}} });
-    //     assert(called);
-    //     auto& crmap = obs;
-    //     assert(crmap.find(2)->second.get() == "abc");
-    //     assert(crmap.find(3)->second.get() == "def");
-    // }
+    //insert(ilist)
+    {
+        foo.map.clear();
+        bool called{false};
+        obs.get<map>().on_insert([&called](const map_t&, map_t::const_iterator)
+                                 { called = true; });
+        obs.get<map>().insert({ {2, "abc"}, {3, "def"} });
+        assert(called);
+        auto crmap = obs.get<map>().get();
+        assert(crmap.find(2)->second == "abc");
+        assert(crmap.find(3)->second == "def");
+    }
 
-    // //swap
-    // {
-    //     obs.clear();
-    //     bool ok{false};
-    //     boost::signals2::scoped_connection c =
-    //         obs.on_insert(
-    //             [&ok](obs_t::const_iterator)
-    //             {
-    //                 ok = true;
-    //             });
-    //     obs_t other{{2, "abc"}, {3, "def"}};
-    //     obs.swap(other);
-    //     assert(ok);
-    // }
+    //swap
+    {
+        foo.map.clear();
+        bool ok{false};
+        boost::signals2::scoped_connection c =
+            obs.get<map>().on_insert(
+                [&ok](const map_t&, map_t::const_iterator)
+                {
+                    ok = true;
+                });
+        map_t other{{2, "abc"}, {3, "def"}};
+        obs.get<map>().swap(other);
+        assert(ok);
+    }
     
     //count
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
-        assert(obs.count(2) == 1);
-        assert(obs.count(0) == 0);
+        foo.map.clear();
+        obs.get<map>().insert({ {2, "abc"}, {3, "def"} });
+        assert(obs.get<map>().count(2) == 1);
+        assert(obs.get<map>().count(0) == 0);
     }
     
     //find fail
     {
-        obs.clear();
-        assert(obs.find(0) == obs.end());
-        const auto& cobs = obs;
-        assert(cobs.find(0) == obs.cend());
+        foo.map.clear();
+        assert(obs.get<map>().find(0) == obs.get<map>().end());
+        const auto& cobs = obs.get<map>();
+        assert(cobs.find(0) == obs.get<map>().cend());
         
     }
     
     //find success
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
-        auto it = obs.find(2);
-        assert(it != obs.end());
-        auto& ob = *it;
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
+        auto it = obs.get<map>().find(2);
+        assert(it != obs.get<map>().end());
+        auto ob = *it;
         bool called{false};
-        ob.second.on_change([&called](std::string)
+        ob.second->on_change([&called](const std::string&)
                             { called = true; });
-        auto it2 = obs.find(2);
-        assert(it2 != obs.end());
-        auto& ob2 = *it2;
-        ob2.second = std::string{"def"};
-        assert(ob.second.get() == "def");
+        auto it2 = obs.get<map>().find(2);
+        assert(it2 != obs.get<map>().end());
+        auto ob2 = *it2;
+        ob2.second->assign("def");
+        assert(ob.second->get() == "def");
         assert(called);        
     }
     
     //equal_range
     {
-        obs.clear();
-        obs.emplace(2, "abc");
-        obs.emplace(3, "def");
-        assert(obs.equal_range(2).first != obs.end());
-        assert(obs.equal_range(4).first == obs.end());
+        foo.map.clear();
+        foo.map.emplace(2, "abc");
+        foo.map.emplace(3, "def");
+        assert(obs.get<map>().equal_range(2).first != obs.get<map>().end());
+        assert(obs.get<map>().equal_range(4).first == obs.get<map>().end());
     }
 
 }

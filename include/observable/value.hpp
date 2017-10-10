@@ -8,37 +8,39 @@
 
 #include "observable/is_observable.hpp"
 
-#include <boost/signals2.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/random_generator.hpp>
+#include <boost/signals2/signal.hpp>
+
+#include <type_traits>
+#include <utility>
 
 namespace observable {
-                
+    class parent_observable;                
 template<typename Observed_>
-struct value
+class value
 {    
+    Observed_ _observed;
+    boost::signals2::signal<void(const Observed_&)> _on_change;
+    friend class parent_observable;
+public:    
     using Observed = Observed_;
 
-    value()
-    : tag(boost::uuids::to_string(boost::uuids::random_generator{}()))
-    {}
+    value() = default;
     
     value(Observed observed)
-        : tag(boost::uuids::to_string(boost::uuids::random_generator{}()))
-        , _observed(std::move(observed))
+        : _observed(std::move(observed))
     {
     }
 
     value(value&& rhs)
-        : tag(std::move(rhs.tag))
-        , _observed(std::move(rhs._observed))
+        noexcept(std::is_nothrow_move_constructible<Observed>::value)
+        : _observed(std::move(rhs._observed))
         , _on_change(std::move(rhs._on_change))
     {
     }
 
     value& operator=(value&& rhs)
+        noexcept(std::is_nothrow_move_constructible<Observed>::value)
     {
-        tag = std::move(rhs.tag);
         _observed = std::move(rhs._observed);
         _on_change = std::move(rhs._on_change);
         return *this;
@@ -47,14 +49,9 @@ struct value
     template<typename T>
     value& operator=(T&& o)
     {
-        assign(std::forward<T>(o));
-        return *this;
-    }
-    
-    void assign(Observed o)
-    {
-        _observed = std::move(o);
+        _observed = std::forward<T>(o);
         _on_change(_observed);
+        return *this;
     }
     
     template<typename F>
@@ -65,24 +62,43 @@ struct value
 
     const Observed& get() const noexcept
     { return _observed; }
-    
-    std::string tag;
-    
-// protected:
-    
-    Observed _observed;
-    boost::signals2::signal<void(const Observed&)> _on_change;
+
+    Observed extract()
+    {        
+        auto o = std::move(_observed);
+        _on_change(_observed);
+        return o;
+    }
 };
     
 template<typename T>
-bool operator==(const value<T>& lhs, const value<T>& rhs)
-{ return lhs.tag == rhs.tag; }
+inline bool operator==(const value<T>& lhs, const value<T>& rhs)
+{ return lhs.get() == rhs.get(); }
     
 template<typename T>
-bool operator!=(const value<T>& lhs, const value<T>& rhs)
+inline bool operator!=(const value<T>& lhs, const value<T>& rhs)
+{ return !(lhs == rhs); }
+    
+template<typename T>
+inline bool operator==(const T& lhs, const value<T>& rhs)
+{ return lhs == rhs.get(); }
+    
+template<typename T>
+inline bool operator!=(const T& lhs, const value<T>& rhs)
+{ return !(lhs == rhs); }
+    
+template<typename T>
+inline bool operator==(const value<T>& lhs, const T& rhs)
+{ return lhs.get() == rhs; }
+    
+template<typename T>
+inline bool operator!=(const value<T>& lhs, const T& rhs)
 { return !(lhs == rhs); }
     
 template<typename T>    
-struct is_observable<value<T>> : std::true_type {};
+struct is_observable<value<T>> : std::true_type
+{
+    // using type = std::true_type;
+};
         
 }

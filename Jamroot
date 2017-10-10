@@ -9,39 +9,17 @@ if ! $(boost_root_path)
 
 use-project boost : $(boost_root_path) ;
 
-project demos
+project observable
   : requirements
     <include>include
     <cxxflags>-std=c++11
     <use>/boost//headers
   ;
 
-# exe hide_model : demo/hide_model.cpp ;
-# exe simple : demo/simple.cpp ;
-# exe specific : demo/specific.cpp ;
-      
-# run test/class.cpp ;
-# run test/class_map.cpp ;
-# run test/class_unordered_map.cpp ;
-# run test/class_unordered_set.cpp ;
-# run test/class_variant.cpp ;
-# run test/class_vector.cpp ;
+run test/class.cpp ;
 run test/map.cpp ;
-run test/map_of_observable.cpp ;
-# run test/member_class_l3.cpp ;
-run test/unordered_map.cpp ;
-run test/unordered_map_of_observable.cpp ;
-run test/unordered_set.cpp ;
-# run test/variant.cpp ;
-# run test/variant_of_class.cpp ;
+run test/value.cpp ;
 run test/vector.cpp ;
 run test/vector_of_observable.cpp ;
-run test/vector_of_class.cpp ;
-# run test/vector_of_vector.cpp ;
+run test/unordered_map.cpp ;
 
-install stage
-  : # hide_model
-    # specific
-    # simple
-  ;
-  

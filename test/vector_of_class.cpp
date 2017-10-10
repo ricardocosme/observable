@@ -4,18 +4,29 @@
 #include <string>
 #include <vector>
 
-struct oelement_t : observable::class_<oelement_t>
+struct element_t 
 {
+    element_t() = default;
+    element_t(std::string p) : s(p) {}
     observable::value<std::string> s;
-    oelement_t()
-    {
-        s.on_change(on_change());
-    }
-    oelement_t(std::string ps)
-        : s(std::move(ps))
-    {
-        s.on_change(on_change());
-    }
+};
+
+struct oelement_t : observable::class_<
+    oelement_t,
+    element_t,
+    observable::member<element_t,
+                       observable::value<std::string>,
+                       &element_t::s>
+>
+{
+    using base = observable::class_<
+        oelement_t,
+        element_t,
+        observable::member<element_t,
+                           observable::value<std::string>,
+                           &element_t::s>
+    >;
+    using base::base;
 };
 
 namespace observable {
@@ -69,7 +80,7 @@ int main()
         bool element2_on_change{false};
         bool s_on_change{false};
         bool s2_on_change{false};
-        ovec.on_change([&elements_on_change]()
+        ovec.on_change([&elements_on_change](const ovector_t&)
                        { elements_on_change = true; });
         ovec.on_insert([&elements_on_insert](ovector_t::const_iterator it)
                        {

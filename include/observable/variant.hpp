@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "observable/traits.hpp"
-#include "observable/types.hpp"
+#include "observable/is_observable.hpp"
 #include "observable/detail/match_visitor.hpp"
 
 #include <boost/signals2.hpp>
@@ -17,11 +16,17 @@
 
 namespace observable {
 
+namespace serialization {
+    struct variant;
+}
+
 template<typename... T>
 class variant
 {
     boost::variant<T...> _variant;    
-    boost::signals2::signal<void()> _on_change, _on_change_type;
+    boost::signals2::signal<void(const variant<T...>&)> _on_change, _on_change_type;
+
+    friend serialization::variant;
 public:
     using Model = boost::variant<T...>;
     
@@ -32,22 +37,23 @@ public:
         : _variant(std::move(o))
     {}
     
-    //?
+    // ?
     variant(const variant& rhs)
         : _variant(rhs._variant)
     {}
 
-    //?
+    // ?
     variant& operator=(const variant& rhs)
     {
         auto before_type = _variant.which();
         _variant = rhs._variant;
         if(before_type != _variant.which())
-            _on_change_type();
-        _on_change();
+            _on_change_type(*this);
+        _on_change(*this);
         return *this;
     }
 
+    variant(variant&&) = default;
     variant& operator=(variant&&) = default;
 
     const boost::variant<T...>& model() const noexcept
@@ -59,8 +65,8 @@ public:
         auto before_type = _variant.which();
         _variant = std::forward<U>(o);
         if(before_type != _variant.which())
-            _on_change_type();
-        _on_change();
+            _on_change_type(*this);
+        _on_change(*this);
         return *this;
     }
         
@@ -90,5 +96,8 @@ public:
     boost::signals2::connection on_change_type(F&& f)
     { return _on_change_type.connect(std::forward<F>(f)); }
 };
+
+template<typename... T>        
+struct is_observable<variant<T...>> : std::true_type {};
 
 }

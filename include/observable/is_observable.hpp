@@ -10,7 +10,9 @@
 
 namespace observable { 
 
-template<typename T>    
-struct is_observable : std::false_type {};
+template<typename T, typename Enable = void>    
+struct is_observable : std::false_type
+{
+};
     
 }

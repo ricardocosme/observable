@@ -1,21 +1,20 @@
-#include "observable/unordered_set.hpp"
+#include <observable/unordered_set.hpp>
 
-#include <array>
-#include <iostream>
 #include <string>
 
-using obs_t = observable::unordered_set<std::string>;
+using namespace observable;
+
+using unmap_t = unordered_set<std::string>;
 
 int main()
 {
-    obs_t obs;
 
     //emplace
     {
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -28,11 +27,11 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = false;
                 });
-        obs.emplace_hint(obs.begin(), "abc");
+        obs.emplace_hint(set.begin(), "abc");
         assert(!ok);
     }
     
@@ -41,11 +40,11 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.emplace_hint(obs.begin(), "def");
+        obs.emplace_hint(set.begin(), "def");
         assert(ok);
     }
     
@@ -71,7 +70,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -85,7 +84,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -98,7 +97,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -112,7 +111,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -125,7 +124,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -139,7 +138,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_insert(
-                [&ok](obs_t::const_iterator)
+                [&ok](const set_t&, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -165,33 +164,33 @@ int main()
         assert(obs.equal_range("<invalid>").first == obs.end());
     }
     
-    // //swap
-    // {
-    //     bool ok{false};
-    //     boost::signals2::scoped_connection c =
-    //         obs.on_insert(
-    //             [&ok](obs_t::const_iterator)
-    //             {
-    //                 ok = true;
-    //             });
-    //     obs_t other{"098", "765"};
-    //     obs.swap(other);
-    //     assert(ok);
-    // }
+    //swap
+    {
+        bool ok{false};
+        boost::signals2::scoped_connection c =
+            obs.on_insert(
+                [&ok](const set_t&, set_t::const_iterator)
+                {
+                    ok = true;
+                });
+        set_t other{"098", "765"};
+        obs.swap(other);
+        assert(ok);
+    }
     
     //erase
     {
-        obs.clear();
-        obs.emplace("abc");
+        set.clear();
+        set.emplace("abc");
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_erase(
-                [&ok](obs_t::value_type v, obs_t::const_iterator)
+                [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     assert(v == "abc");
                     ok = true;
                 });
-        obs.erase(obs.begin());
+        obs.erase(set.begin());
         assert(ok);
     }
     
@@ -201,11 +200,11 @@ int main()
         obs.emplace("ghi");
         boost::signals2::scoped_connection c =
             obs.on_erase(
-                [&ok](obs_t::value_type v, obs_t::const_iterator)
+                [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = true;
                 });
-        obs.erase(obs.begin(), obs.end());
+        obs.erase(set.begin(), set.end());
         assert(ok);
     }
     
@@ -217,7 +216,7 @@ int main()
         obs.emplace("ghi");
         boost::signals2::scoped_connection c =
             obs.on_erase(
-                [&ok](obs_t::value_type v, obs_t::const_iterator)
+                [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = true;
                 });
@@ -233,7 +232,7 @@ int main()
         obs.emplace("ghi");
         boost::signals2::scoped_connection c =
             obs.on_erase(
-                [&ok](obs_t::value_type v, obs_t::const_iterator)
+                [&ok](const set_t&, set_t::value_type v, set_t::const_iterator)
                 {
                     ok = false;
                 });
@@ -246,7 +245,7 @@ int main()
         bool ok{false};
         boost::signals2::scoped_connection c =
             obs.on_erase(
-                [&ok](obs_t::value_type, obs_t::const_iterator)
+                [&ok](const set_t&, set_t::value_type, set_t::const_iterator)
                 {
                     ok = true;
                 });
