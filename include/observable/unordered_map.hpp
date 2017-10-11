@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "observable/mapped_type_proxy.hpp"
 #include "observable/is_observable.hpp"
 #include "observable/proxy.hpp"
 
@@ -33,9 +34,15 @@ class unordered_map_iterator
     : public boost::iterator_adaptor<
         unordered_map_iterator<Observable>,
         typename Observable::Model::iterator,
-        proxy<Observable>,
+        std::pair<
+            typename Observable::Model::key_type,
+            mapped_type_proxy<Observable>
+        >,
         boost::forward_traversal_tag,
-        proxy<Observable>,
+        std::pair<
+            typename Observable::Model::key_type,
+            mapped_type_proxy<Observable>
+        >,
         typename Observable::Model::difference_type
     >
 {
@@ -50,8 +57,16 @@ public:
 private:
     friend class boost::iterator_core_access;
     
-    proxy<Observable> dereference() const
-    { return {*_observable, this->base_reference()}; }
+    std::pair<
+        typename Observable::Model::key_type,
+        mapped_type_proxy<Observable>
+    > dereference() const
+    {
+        auto it = this->base_reference();
+        return std::make_pair(it->first,
+                              mapped_type_proxy<Observable>
+                              {*_observable, this->base_reference()});
+    }
     
     Observable* _observable{nullptr};    
 };
@@ -85,14 +100,20 @@ class unordered_map<
     boost::signals2::signal<
         void(const unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>&,
              typename container_t::const_iterator)>
-    _after_erase, _after_insert, _on_value_change;
+    _after_erase, _after_insert;
+    
+    boost::signals2::signal<
+        void(const unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>&,
+             const typename container_t::value_type&)>
+    _on_value_change;
     
     boost::signals2::signal<
         void(const unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>&)>
     _on_change;
 
-    friend class proxy<unordered_map<Key, T, Hash, KeyEqual, Allocator,
-                                     Model_>>;
+    friend class mapped_type_proxy<
+        unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>
+    >;
     
 public:
     
@@ -103,8 +124,11 @@ public:
     using value_type = typename container_t::value_type;
     using key_equal = typename container_t::key_equal;
     using hasher = typename container_t::hasher;
-    using reference = proxy<
-        unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>>;
+    using reference = std::pair<
+        key_type,
+        mapped_type_proxy<
+            unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>>
+        >;
     using const_reference = typename container_t::const_reference;
     using pointer = reference*;
     using const_pointer = typename container_t::const_pointer;
@@ -161,109 +185,46 @@ public:
     size_type max_size() const noexcept
     { return _container.max_size(); }
 
-    void clear() noexcept
+    bool clear() noexcept
     {
-        _before_erase(*this, _container.cend());
+        if(_before_erase(*this, _container.cend()) == false)
+            return false;
         _container.clear();
         _after_erase(*this, _container.cend());
         _on_change(*this);
+        return true;
     }
     
-    std::pair<iterator, bool> insert
-    (const value_type& value)
+    std::pair<iterator, bool> erase(const_iterator pos)        
     {
-        auto ret = _container.insert(value);
-        if (ret.second)
-        {
-            _after_insert(*this, ret.first);
-            _on_change(*this);
-        }
-        return ret;
-    }
-    
-    std::pair<iterator, bool> insert(value_type&& value)
-    {
-        auto ret = _container.insert(std::move(value));
-        if (ret.second)
-        {
-            _after_insert(*this, ret.first);
-            _on_change(*this);
-        }
-        return ret;
-    }
-    
-    iterator insert(const_iterator hint,
-                    const value_type& value)
-    {
-        auto before_size = _container.size();
-        auto it = _container.insert(hint, value);
-        if (_container.size() != before_size)
-        {
-            _after_insert(*this, it);
-            _on_change(*this);
-        }
-        return it;
-    }
-    
-    template<typename InputIt>
-    void insert(InputIt first, InputIt last)
-    {
-        auto before_size = _container.size();
-        _container.insert(first, last);
-        if (_container.size() != before_size)
-        {
-            _after_insert(*this, const_iterator{}); //TODO
-            _on_change(*this);
-        }
-    }
-    
-    void insert(std::initializer_list<value_type> ilist)
-    { insert(ilist.begin(), ilist.end()); }
-    
-    template<typename... Args>
-    std::pair<iterator, bool> emplace(Args&&... args)
-    {
-        auto ret = _container.emplace(std::forward<Args>(args)...);
-        if (ret.second)
-        {
-            _after_insert(*this, ret.first);
-            _on_change(*this);
-        }
-        return ret;
-    }
-    
-    template<typename... Args>
-    iterator emplace_hint
-    (const_iterator hint, Args&&... args)
-    {
-        auto before_size = _container.size();
-        auto it = _container.emplace_hint(hint, std::forward<Args>(args)...);
-        if (_container.size() != before_size)
-        {
-            _after_insert(*this, it);
-            _on_change(*this);
-        }
-        return it;
-    }
-    
-    iterator erase(const_iterator pos)        
-    {
-        _before_erase(*this, pos);
+        if(_before_erase(*this, pos) == false)
+            return std::make_pair(end(), false);
         auto it = _container.erase(pos);
         _after_erase(*this, it);
         _on_change(*this);
-        return it;
+        return std::make_pair(iterator{*this, it}, true);
     }
     
-    iterator erase(const_iterator first,
-                   const_iterator last)        
+    std::pair<iterator, bool> erase(iterator pos)        
+    {
+        if(_before_erase(*this, pos.base()) == false)
+            return std::make_pair(end(), false);
+        auto it = _container.erase(pos.base());
+        _after_erase(*this, it);
+        _on_change(*this);
+        return std::make_pair(iterator{*this, it}, true);
+    }
+    
+    std::pair<iterator, bool> erase(const_iterator first,
+                                    const_iterator last)        
     {
         //TODO range?
-        _before_erase(*this, first);
+        if(_before_erase(*this, first) == false)
+            return std::make_pair(end(), false);
         auto it = _container.erase(first, last);
         _after_erase(*this, it);
         _on_change(*this);
-        return it;
+        return std::make_pair(iterator{*this, it}, true);
     }
     
     size_type erase(const key_type& key)
@@ -282,6 +243,94 @@ public:
         return n;
     }
     
+    template<typename... Args>
+    std::pair<iterator, bool> emplace(Args&&... args)
+    {
+        auto ret = _container.emplace(std::forward<Args>(args)...);
+        if (ret.second)
+        {
+            _after_insert(*this, ret.first);
+            _on_change(*this);
+        }
+        return std::make_pair(iterator{*this, ret.first}, ret.second);;
+    }
+    
+    template<typename... Args>
+    iterator emplace_hint(const_iterator hint, Args&&... args)
+    {
+        auto before_size = _container.size();
+        auto it = _container.emplace_hint(hint, std::forward<Args>(args)...);
+        if (_container.size() != before_size)
+        {
+            _after_insert(*this, it);
+            _on_change(*this);
+        }
+        return iterator{*this, it};
+    }
+    
+    std::pair<iterator, bool> insert(const value_type& value)
+    {
+        auto ret = _container.insert(value);
+        if (ret.second)
+        {
+            _after_insert(*this, ret.first);
+            _on_change(*this);
+        }
+        return std::make_pair(iterator{*this, ret.first}, ret.second);
+    }
+    
+    std::pair<iterator, bool> insert(value_type&& value)
+    {
+        auto ret = _container.insert(std::move(value));
+        if (ret.second)
+        {
+            _after_insert(*this, ret.first);
+            _on_change(*this);
+        }
+        return std::make_pair(iterator{*this, ret.first}, ret.second);
+    }
+    
+    iterator insert(const_iterator hint,
+                    const value_type& value)
+    {
+        auto before_size = _container.size();
+        auto it = _container.insert(hint, value);
+        if (_container.size() != before_size)
+        {
+            _after_insert(*this, it);
+            _on_change(*this);
+        }
+        return iterator{*this, it};
+    }
+    
+    iterator insert(const_iterator hint,
+                    value_type&& value)
+    {
+        auto before_size = _container.size();
+        auto it = _container.insert(hint, std::move(value));
+        if (_container.size() != before_size)
+        {
+            _after_insert(*this, it);
+            _on_change(*this);
+        }
+        return iterator{*this, it};
+    }
+    
+    template<typename InputIt>
+    void insert(InputIt first, InputIt last)
+    {
+        auto before_size = _container.size();
+        _container.insert(first, last);
+        if (_container.size() != before_size)
+        {
+            _after_insert(*this, const_iterator{}); //TODO
+            _on_change(*this);
+        }
+    }
+    
+    void insert(std::initializer_list<value_type> ilist)
+    { insert(ilist.begin(), ilist.end()); }
+            
     void swap(container_t& other)
     {
         _before_erase(*this, _container.cend());
@@ -298,27 +347,49 @@ public:
     void reserve(size_type n)
     { return _container.reserve(n); }
     
-    mapped_type& at(const key_type& key)
-    { return _container.at(key); }
+    mapped_type_proxy<
+        unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>
+    >
+    at(const key_type& key)
+    {
+        auto it = _container.find(key);
+        if(it == _container.end())
+            throw std::out_of_range("vector::at");            
+        return {*this, it};
+    }
     
     const mapped_type& at(const key_type& key) const
     { return _container.at(key); }
     
-    mapped_type& operator[](const key_type& key)
-    { return _container[key]; }
+    mapped_type_proxy<
+        unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>
+    >
+    operator[](const key_type& key)
+    {
+        auto it = _container.find(key);
+        if(it == _container.end())
+            _container.emplace(key, mapped_type{});
+        return {*this, it};
+    }
     
-    mapped_type& operator[](key_type&& key)
-    { return _container[std::move(key)]; }
+    mapped_type_proxy<
+        unordered_map<Key, T, Hash, KeyEqual, Allocator, Model_>
+    >
+    operator[](key_type&& key)
+    {
+        auto it = _container.find(key);
+        if(it == _container.end())
+            _container.emplace(std::move(key), mapped_type{});
+        return {*this, it};
+    }
         
-    size_type count
-    (const key_type& key) const noexcept
+    size_type count(const key_type& key) const
     { return _container.count(key); }
     
     iterator find(const key_type& key)
-    { return _container.find(key); }
+    { return iterator{*this, _container.find(key)}; }
     
-    const_iterator find
-    (const key_type& key) const
+    const_iterator find(const key_type& key) const
     { return _container.find(key); }
     
     std::pair<iterator, iterator> equal_range
@@ -344,6 +415,10 @@ public:
     template<typename F>
     boost::signals2::connection after_insert(F&& f)
     { return _after_insert.connect(std::forward<F>(f)); }
+    
+    template<typename F>
+    boost::signals2::connection on_value_change(F&& f)
+    { return _on_value_change.connect(std::forward<F>(f)); }
     
     template<typename F>
     boost::signals2::connection on_change(F&& f)

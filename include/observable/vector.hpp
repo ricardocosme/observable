@@ -565,7 +565,7 @@ public:
         if(_before_erase(*this, pos) == false)
             return std::make_pair(end(), false);
         auto it = _container.erase(pos);
-        _after_erase(*this,it);
+        _after_erase(*this, it);
         _on_change(*this);
         return std::make_pair(it, true);
     }
@@ -577,7 +577,7 @@ public:
         if(_before_erase(*this, first) == false)
             return std::make_pair(end(), false);
         auto it = _container.erase(first, last);
-        _after_erase(*this,it);
+        _after_erase(*this, it);
         _on_change(*this);
         return std::make_pair(it, true);
     }

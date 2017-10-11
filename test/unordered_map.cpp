@@ -4,7 +4,7 @@
 #include <iostream>
 using namespace observable;
 
-using unmap_t = unordered_map<int, std::string>;
+using umap_t = unordered_map<int, std::string>;
 
 template<typename ocontainer, typename expected_t>
 void check_equal(const ocontainer& c, const expected_t& expected)
@@ -17,16 +17,16 @@ void check_equal(const ocontainer& c, const expected_t& expected)
 int main()
 {
     {
-        unmap_t umap;
+        umap_t umap;
     }
     
     {
-        unmap_t umap(10);
+        umap_t umap(10);
     }
     
     {
         std::vector<std::pair<int, std::string>> src{{0, "abc"}, {1, "def"}};
-        unmap_t umap(src.begin(), src.end());
+        umap_t umap(src.begin(), src.end());
         assert(umap.size() == 2);
         std::unordered_map<int, std::string> expected{{0, "abc"}, {1, "def"}};;
         check_equal(umap, expected);
@@ -34,433 +34,628 @@ int main()
 
     {
         std::vector<std::pair<int, std::string>> src{{0, "abc"}, {1, "def"}};
-        unmap_t umap({std::pair<const int, std::string>{0, "abc"},
+        umap_t umap({std::pair<const int, std::string>{0, "abc"},
                       std::pair<const int, std::string>{1, "def"}});
         assert(umap.size() == 2);
         std::unordered_map<int, std::string> expected{{0, "abc"}, {1, "def"}};;
         check_equal(umap, expected);
     }
     
-    // //at fail
-    // {
-    //     bool ok{false};
-    //     try
-    //     {
-    //         obs.at(0);
-    //     }
-    //     catch(const std::out_of_range&)
-    //     { ok = true; }
-    //     assert(ok);
-    // }
+    //begin()
+    {
+        umap_t umap;
+        umap.emplace(2, "abc");
+        auto e = *umap.begin();
+        assert(e.first == 2);
+        assert(e.second == "abc");
+        bool on_value_change_called{false};
+        umap.on_value_change
+            ([&on_value_change_called](const umap_t&, const umap_t::value_type&)
+             {
+                 on_value_change_called = true;
+             });
+        bool on_change_called{false};
+        umap.on_change
+            ([&on_change_called](const umap_t&)
+             {
+                 on_change_called = true;
+             });
+        e.second = "change";
+        assert(on_value_change_called);
+        assert(on_change_called);
+    }
 
-    // //at success
-    // {
-    //     bool ok{true};
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     bool called{false};
-    //     try
-    //     {
-    //         obs.at(2);
-    //     //     assert(ob->get() == "abc");
-    //     //     ob->on_change([&called](const std::string&)
-    //     //                   { called = true; });
-    //     //     ob->assign("def");
-    //     //     assert(ob->get() == "def");
-    //     //     assert(called);
-    //     // }
-    //     catch(const std::out_of_range&)
-    //     { ok = false; }
-    //     assert(ok);
-    // }
+    //cbegin()
+    {
+        umap_t umap;
+        umap.emplace(2, "abc");
+        auto e = *umap.cbegin();
+        assert(e.first == 2);
+        assert(e.second == "abc");
+    }
     
-    // //at const fail
-    // {
-    //     bool ok{false};
-    //     try
-    //     {
-    //         const auto& co = obs;
-    //         co.at(0);
-    //     }
-    //     catch(const std::out_of_range&)
-    //     { ok = true; }
-    //     assert(ok);
-    // }
+    //end/cend()
+    {
+        umap_t umap;
+        umap.emplace(2, "abc");
+        umap.emplace(3, "def");
+        assert(std::distance(umap.begin(), umap.end()) == 2);
+        assert(std::distance(umap.cbegin(), umap.cend()) == 2);
+    }
 
-    // //at const success
-    // {
-    //     bool ok{true};
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     try
-    //     {
-    //         const auto& co = obs;
-    //         auto v = co.at(2);
-    //         assert(v == "abc");
-    //     }
-    //     catch(const std::out_of_range&)
-    //     { ok = false; }
-    //     assert(ok);            
-    // }
+    //empty()
+    {
+        umap_t umap;
+        assert(umap.empty());
+        umap.emplace(2, "abc");
+        assert(!umap.empty());
+    }
+    
+    //size()
+    {
+        umap_t umap;
+        umap.emplace(2, "abc");
+        umap.emplace(3, "def");
+        assert(umap.size() == 2);
+    }
+    
+    //max_size()
+    {
+        umap_t umap;
+        umap.emplace(2, "abc");
+        umap.emplace(3, "def");
+        assert(umap.max_size() >= 2);
+    }
+    
+    //clear() before_erase returns true
+    {
+        umap_t umap;
+        umap.emplace(0, "abc");
+        umap.emplace(1, "def");
+        bool after_called{false};
+        bool before_called{false};
+        bool on_change_called{false};
+        umap.before_erase([&before_called]
+                         (const umap_t& umap,
+                          umap_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(umap.cend() == it);
+                             return true;
+                         });
+        umap.after_erase([&after_called]
+                        (const umap_t&,
+                         umap_t::const_iterator)
+                        { after_called = true; });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        assert(umap.clear());
+        assert(before_called);
+        assert(after_called);
+        assert(on_change_called);
+    }
+            
+    //clear() before_erase returns false
+    {
+        umap_t umap;
+        umap.emplace(0, "abc");
+        umap.emplace(2, "def");
+        bool after_called{false};
+        bool before_called{false};
+        bool on_change_called{false};
+        umap.before_erase([&before_called]
+                         (const umap_t& umap,
+                          umap_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(umap.cend() == it);
+                             return false;
+                         });
+        umap.after_erase([&after_called]
+                        (const umap_t&,
+                         umap_t::const_iterator)
+                        { after_called = true; });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        assert(!umap.clear());
+        assert(before_called);
+        assert(!after_called);
+        assert(!on_change_called);
+    }
+    
+    //erase(const_iterator) before_erase returns true
+    {
+        umap_t umap;
+        umap.emplace(0, "abc");
+        umap.emplace(1, "def");
+        bool after_called{false};
+        bool before_called{false};
+        bool on_change_called{false};
+        umap.before_erase([&before_called]
+                         (const umap_t& umap,
+                          umap_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(it->first == 0);
+                             assert(it->second == "abc");
+                             return true;
+                         });
+        umap.after_erase([&after_called]
+                        (const umap_t&,
+                         umap_t::const_iterator)
+                        { after_called = true; });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        auto ret = umap.erase(umap.find(0));
+        assert(ret.second);
+        assert(umap.cbegin()->second == "def");
+        assert(umap.size() == 1);
+        assert(before_called);
+        assert(after_called);
+        assert(on_change_called);
+    }
+    
+    //erase(const_iterator) before_erase returns false
+    {
+        umap_t umap;
+        umap.emplace(0, "abc");
+        umap.emplace(1, "def");
+        bool after_called{false};
+        bool before_called{false};
+        bool on_change_called{false};
+        umap.before_erase([&before_called]
+                         (const umap_t& umap,
+                          umap_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(it->first == 0);
+                             assert(it->second == "abc");
+                             return false;
+                         });
+        umap.after_erase([&after_called]
+                        (const umap_t&,
+                         umap_t::const_iterator)
+                        { after_called = true; });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        auto ret = umap.erase(umap.find(0));
+        assert(ret.second == false);
+        assert(ret.first == umap.end());
+        assert(umap.size() == 2);
+        assert(before_called);
+        assert(!after_called);
+        assert(!on_change_called);
+    }
+    
+    //erase(first, last) before_erase returns true
+    {
+        umap_t umap;
+        umap.emplace(0, "abc");
+        umap.emplace(1, "def");
+        bool called{false};
+        bool before_called{false};
+        bool on_change_called{false};
+        umap.before_erase([&before_called]
+                          (const umap_t& umap,
+                           umap_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(umap.cbegin() == it);
+                             return true;
+                         });
+        umap.after_erase([&called](const umap_t&,
+                                  umap_t::const_iterator)
+                        { called = true; });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        auto ret = umap.erase(umap.cbegin(), umap.cend());
+        assert(ret.second);
+        assert(ret.first == umap.end());
+        assert(before_called);
+        assert(called);
+        assert(on_change_called);
+        assert(umap.empty());
+    }
+    
+    //erase(first, last) before_erase returns false
+    {
+        umap_t umap;
+        umap.emplace(0, "abc");
+        umap.emplace(1, "def");
+        bool called{false};
+        bool before_called{false};
+        bool on_change_called{false};
+        umap.before_erase([&before_called]
+                          (const umap_t& umap,
+                           umap_t::const_iterator it)
+                         {
+                             before_called = true;
+                             assert(umap.cbegin() == it);
+                             return false;
+                         });
+        umap.after_erase([&called](const umap_t&,
+                                  umap_t::const_iterator)
+                        { called = true; });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        auto ret = umap.erase(umap.cbegin(), umap.cend());
+        assert(!ret.second);
+        assert(ret.first == umap.end());
+        assert(before_called);
+        assert(!called);
+        assert(!on_change_called);
+        assert(!umap.empty());
+    }
+    
+    //emplace()
+    {
+        umap_t umap;
+        bool called{false};
+        bool on_change_called{false};
+        umap.emplace(0, "abc");
+        umap.after_insert([&called](const umap_t&,
+                                   umap_t::const_iterator it)
+                       {
+                           assert(it->first == 1);
+                           assert(it->second == "def");
+                           called = true;
+                       });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        umap.emplace(1, "def");
+        assert(called);
+        assert(on_change_called);
+        assert(umap.size() == 2);
+    }
+    
+    //emplace_hint()
+    {
+        umap_t umap;
+        bool called{false};
+        bool on_change_called{false};
+        umap.emplace(0, "abc");
+        umap.after_insert([&called](const umap_t&,
+                                   umap_t::const_iterator it)
+                       {
+                           assert(it->first == 1);
+                           assert(it->second == "def");
+                           called = true;
+                       });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        umap.emplace_hint(umap.cbegin(), 1, "def");
+        assert(called);
+        assert(on_change_called);
+        assert(umap.size() == 2);
+    }
 
-    // //operator[] lvalue insert
-    // {
-    //     // bool called{false};
-    //     obs_t::key_type k = 0;
-    //     auto& ob = obs[k];
-    //     assert(ob == obs_t::mapped_type{});
-    //     // ob->on_change([&called]()
-    //     //               { called = true; });
-    //     // ob->assign("def");
-    //     // assert(ob->get() == "def");
-    //     // assert(called);
-    // }
+    //insert(const value_type&)
+    {
+        umap_t umap;
+        umap_t::value_type v(0, "abc");
+        umap.insert(v);
+        bool called{false};
+        bool on_change_called{false};
+        umap.after_insert([&called](const umap_t&,
+                                   umap_t::const_iterator it)
+                         {
+                             assert(it->first == 1);
+                             assert(it->second == "def");
+                             called = true;
+                         });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        umap_t::value_type v2(1, "def");
+        auto ret = umap.insert(v2);
+        assert(ret.second);
+        assert(ret.first->first == 1);
+        assert(ret.first->second == "def");
+        assert(called);
+        assert(on_change_called);
+        assert(umap.size() == 2);
+    }
 
-    // //operator[] lvalue lookup
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs_t::key_type k = 2;
-    //     auto& ob = obs[k];
-    //     assert(ob == "abc");
-    //     // bool called{false};
-    //     // ob->on_change([&called]()
-    //     //              { called = true; });
-    //     // ob->assign("def");
-    //     // assert(ob->get() == "def");
-    //     // assert(called);
-    // }
-    
-    // //operator[] rvalue insert
-    // {
-    //     auto& ob = obs[1];
-    //     assert(ob == obs_t::mapped_type{});
-    // }
+    //insert(value_type&&)
+    {
+        umap_t umap;
+        bool called{false};
+        bool on_change_called{false};
+        umap_t::value_type v(0, "abc");
+        umap.insert(std::move(v));
+        umap.after_insert([&called](const umap_t&,
+                                   umap_t::const_iterator it)
+                         {
+                             assert(it->first == 1);
+                             assert(it->second == "def");
+                             called = true;
+                         });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        umap_t::value_type v2(1, "def");
+        auto ret = umap.insert(std::move(v2));
+        assert(ret.second);
+        assert(ret.first->first == 1);
+        assert(ret.first->second == "def");
+        assert(called);
+        assert(on_change_called);
+        assert(umap.size() == 2);
+    }
 
-    // //operator[] rvalue lookup
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     auto& ob = obs[2];
-    //     assert(ob == "abc");
-    //     // bool called{false};
-    //     // ob->on_change([&called]()
-    //     //               { called = true; });
-    //     // ob->assign("def");
-    //     // assert(ob->get() == "def");
-    //     // assert(called);
-    // }
+    //insert(const_iterator, const value_type&)
+    {
+        umap_t umap;
+        umap_t::value_type v(0, "abc");
+        umap.insert(umap.cbegin(), v);
+        bool called{false};
+        bool on_change_called{false};
+        umap.after_insert([&called](const umap_t&,
+                                   umap_t::const_iterator it)
+                         {
+                             assert(it->first == 1);
+                             assert(it->second == "def");
+                             called = true;
+                         });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        umap_t::value_type v2(1, "def");
+        auto it = umap.insert(std::next(umap.cbegin()), v2);
+        assert(it->first == 1);
+        assert(it->second == "def");
+        assert(called);
+        assert(on_change_called);
+        assert(umap.size() == 2);
+    }
 
-    // //begin()
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     auto& ob = obs.begin()->second;
-    //     assert(ob == "abc");
-    //     // bool called{false};
-    //     // ob->on_change([&called]()
-    //     //               { called = true; });
-    //     // ob->assign("def");
-    //     // assert(ob->get() == "def");
-    //     // assert(called);
-    // }
+    //insert(const_iterator, value_type&&)
+    {
+        umap_t umap;
+        bool called{false};
+        bool on_change_called{false};
+        umap_t::value_type v(0, "abc");
+        umap.insert(umap.cbegin(), std::move(v));
+        umap.after_insert([&called](const umap_t&,
+                                   umap_t::const_iterator it)
+                         {
+                             assert(it->first == 1);
+                             assert(it->second == "def");
+                             called = true;
+                         });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        umap_t::value_type v2(1, "def");
+        auto it = umap.insert(std::next(umap.cbegin()), std::move(v2));
+        assert(it->first == 1);
+        assert(it->second == "def");
+        assert(called);
+        assert(on_change_called);
+        assert(umap.size() == 2);
+    }
 
-    // //cbegin()
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     auto& ob = obs.cbegin()->second;
-    //     assert(ob == "abc");
-    // }
-    
-    // //end/cend()
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     assert(obs.begin() != obs.end());
-    //     assert(obs.cbegin() != obs.cend());
-    // }
+    //insert(first, last)
+    {
+        umap_t umap;
+        bool called{false};
+        bool on_change_called{false};
+        umap.after_insert([&called](const umap_t& umap,
+                                   umap_t::const_iterator it)
+                         {
+                             assert(it == umap.cend());
+                             called = true;
+                         });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        std::initializer_list<umap_t::value_type> src{{0, "abc"}, {1, "def"}};
+        umap.insert(src.begin(), src.end());
+        assert(called);
+        assert(on_change_called);
+        assert(umap.size() == 2);
+    }
 
-    // //empty()
-    // {
-    //     obs.clear();
-    //     assert(obs.empty());
-    // }
+    //insert(ilist)
+    {
+        umap_t umap;
+        bool called{false};
+        bool on_change_called{false};
+        umap.after_insert([&called](const umap_t& umap,
+                                   umap_t::const_iterator it)
+                         {
+                             assert(it == umap.cend());
+                             called = true;
+                         });
+        umap.on_change([&on_change_called]
+                      (const umap_t&)
+                      { on_change_called = true; });
+        umap.insert({{0, "abc"}, {1, "def"}});
+        assert(called);
+        assert(on_change_called);
+        assert(umap.size() == 2);
+    }
     
-    // //size()
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs.emplace(3, "def");
-    //     assert(obs.size() == 2);
-    // }
-    
-    // //max_size()
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs.emplace(3, "def");
-    //     assert(obs.max_size() >= 2);
-    // }
-    
-    //  //clear()
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs.emplace(3, "def");
-    //     bool called{false};
-    //     bool before_called{false};
-    //     boost::signals2::scoped_connection c1 =
-    //         obs.before_erase
-    //         ([&before_called](obs_t::const_iterator it)
-    //          {
-    //              before_called = true;
-    //              assert(m.end() == it);
-    //          });
-    //     boost::signals2::scoped_connection c2 =
-    //         obs.on_erase
-    //         ([&called](obs_t::const_iterator)
-    //          { called = true; });
-    //     obs.clear();
-    //     assert(before_called);
-    //     assert(called);
-    //     assert(obs.empty());
-    // }
-    
-    // //erase()
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs.emplace(3, "def");
-    //     bool called{false};
-    //     bool before_called{false};
-    //     boost::signals2::scoped_connection c1 =
-    //         obs().before_erase
-    //         ([&before_called](const obs_t& m, obs_t::const_iterator it)
-    //          {
-    //              before_called = true;
-    //              assert(it != m.end());
-    //          });
-    //     boost::signals2::scoped_connection c2 =
-    //         obs().on_erase
-    //         ([&called](obs_t::const_iterator)
-    //          { called = true; });
-    //     obs().erase(obs().cbegin());
-    //     assert(before_called);
-    //     assert(called);
-    //     assert(obs().size() == 1);
-    // }
-    
-    //  //erase(first, last)
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs.emplace(3, "def");
-    //     bool called{false};
-    //     bool before_called{false};
-    //     boost::signals2::scoped_connection c1 =
-    //         obs().before_erase
-    //         ([&before_called](obs_t::const_iterator it)
-    //          {
-    //              before_called = true;
-    //              assert(it != m.end());
-    //          });
-    //     boost::signals2::scoped_connection c2 =
-    //         obs().on_erase
-    //         ([&called](obs_t::value_type, obs_t::const_iterator)
-    //          { called = true; });
-    //     obs().erase(obs().cbegin(), obs().cend());
-    //     assert(before_called);
-    //     assert(called);
-    //     assert(obs().empty());
-    // }
-    
-    //  //erase(key)
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs.emplace(3, "def");
-    //     bool called{false};
-    //     bool before_called{false};
-    //     boost::signals2::scoped_connection c1 =
-    //         obs().before_erase
-    //         ([&before_called](obs_t::const_iterator it)
-    //          {
-    //              before_called = true;
-    //              assert(it->second == "abc");
-    //          });
-    //     boost::signals2::scoped_connection c2 =
-    //         obs().on_erase
-    //         ([&called](const obs_t&,
-    //                    obs_t::value_type v,
-    //                    obs_t::const_iterator)
-    //          {
-    //              assert(v.second == "abc");
-    //              called = true;
-    //          });
-    //     obs().erase(2);
-    //     assert(called);
-    //     auto crmap = obs().get();
-    //     assert(crmap.find(3)->second == "def");
-    // }
-    
-    // //emplace()
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs().on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     obs().emplace(2, "abc");
-    //     obs().emplace(3, "def");
-    //     assert(called);
-    //     auto crmap = obs().get();
-    //     assert(crmap.find(2)->second == "abc");
-    //     assert(crmap.find(3)->second == "def");
-    // }
-    
-    // //emplace_hint()
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs().on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     obs().emplace_hint(obs.cbegin(), 2, "abc");
-    //     obs().emplace_hint(obs.cbegin(),3, "def");
-    //     assert(called);
-    //     auto crmap = obs().get();
-    //     assert(crmap.find(2)->second == "abc");
-    //     assert(crmap.find(3)->second == "def");
-    // }
-    
-    // //insert(const value_type&)
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs().on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     auto v = obs_t::value_type(2, "abc");
-    //     obs().insert(v);
-    //     auto v2 = obs_t::value_type(3, "def");
-    //     obs().insert(v2);
-    //     assert(called);
-    //     auto crmap = obs().get();
-    //     assert(crmap.find(2)->second == "abc");
-    //     assert(crmap.find(3)->second == "def");
-    // }
+    //at fail
+    {
+        umap_t umap;
+        bool ok{false};
+        try
+        {
+            umap.at(0);
+        }
+        catch(const std::out_of_range&)
+        { ok = true; }
+        assert(ok);
+    }
 
-    // //insert(value_type&&)
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs().on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     obs().insert(obs_t::value_type(2, "abc"));
-    //     obs().insert(obs_t::value_type(3, "def"));
-    //     assert(called);
-    //     auto crmap = obs().get();
-    //     assert(crmap.find(2)->second == "abc");
-    //     assert(crmap.find(3)->second == "def");
-    // }
-    
-    // //insert(hint, value_type&&)
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs().on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     obs().insert(obs.cbegin(), obs_t::value_type(2, "abc"));
-    //     obs().insert(obs.cbegin(), obs_t::value_type(3, "def"));
-    //     assert(called);
-    //     auto crmap = obs().get();
-    //     assert(crmap.find(2)->second == "abc");
-    //     assert(crmap.find(3)->second == "def");
-    // }
-    
-    // //insert(first, last)
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs().on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     std::array<std::pair<std::size_t, std::string>, 2> a{{ {2, "abc"}, {3, "def"} }};
-    //     obs().insert(a.cbegin(), a.cend());
-    //     assert(called);
-    //     auto crmap = obs().get();
-    //     assert(crmap.find(2)->second == "abc");
-    //     assert(crmap.find(3)->second == "def");
-    // }
+    //at success
+    {
+        bool ok{true};
+        umap_t umap;
+        umap.emplace(0, "abc");
+        try
+        {
+            assert(umap.at(0) == "abc");
+            bool on_value_change_called{false};
+            bool on_change_called{false};
+            umap.on_value_change
+                ([&on_value_change_called]
+                 (const umap_t&,
+                  const umap_t::value_type& e)
+                 {
+                     assert(e.second == "change");
+                     on_value_change_called = true;
+                 });
+            umap.on_change
+                ([&on_change_called](const umap_t&)
+                 {
+                     on_change_called = true;
+                 });
+            umap[0] = "change";
+            assert(on_value_change_called);
+            assert(on_change_called);
+        }
+        catch(const std::out_of_range&)
+        { ok = false; }
+        assert(ok);
+    }
 
-    // //insert(ilist)
-    // {
-    //     obs.clear();
-    //     bool called{false};
-    //     obs().on_insert([&called](obs_t::const_iterator)
-    //                              { called = true; });
-    //     obs().insert({ {2, "abc"}, {3, "def"} });
-    //     assert(called);
-    //     auto crmap = obs().get();
-    //     assert(crmap.find(2)->second == "abc");
-    //     assert(crmap.find(3)->second == "def");
-    // }
+    //at const fail
+    {
+        umap_t umap;
+        bool ok{false};
+        try
+        {
+            const auto& cvalue = umap;
+            cvalue.at(0);
+        }
+        catch(const std::out_of_range&)
+        { ok = true; }
+        assert(ok);
+    }
 
+    //at const success
+    {
+        bool ok{true};
+        umap_t umap;
+        umap.emplace(0, "abc");
+        try
+        {
+            const auto& cumap = umap;
+            auto cvalue = cumap.at(0);
+            assert(cvalue == "abc");
+        }
+        catch(const std::out_of_range&)
+        { ok = false; }
+        assert(ok);            
+    }
+    
+    //operator[lvalue] 
+    {
+        umap_t umap;
+        umap.emplace(0, "abc");
+        assert(umap[0] == "abc");
+        bool on_value_change_called{false};
+        bool on_change_called{false};
+        umap.on_value_change
+            ([&on_value_change_called](const umap_t&,
+                                       const umap_t::value_type& e)
+             {
+                 assert(e.second == "change");
+                 on_value_change_called = true;
+             });
+        umap.on_change
+            ([&on_change_called](const umap_t&)
+             {
+                 on_change_called = true;
+             });
+        int i = 0;
+        umap[i] = "change";
+        assert(on_value_change_called);
+        assert(on_change_called);
+    }
+
+    //operator[rvalue] 
+    {
+        umap_t umap;
+        umap.emplace(0, "abc");
+        assert(umap[0] == "abc");
+        bool on_value_change_called{false};
+        bool on_change_called{false};
+        umap.on_value_change
+            ([&on_value_change_called](const umap_t&,
+                                       const umap_t::value_type& e)
+             {
+                 assert(e.second == "change");
+                 on_value_change_called = true;
+             });
+        umap.on_change
+            ([&on_change_called](const umap_t&)
+             {
+                 on_change_called = true;
+             });
+        umap[0] = "change";
+        assert(on_value_change_called);
+        assert(on_change_called);
+    }
+    
     // //swap
     // {
-    //     obs.clear();
+    //     umap.clear();
     //     bool ok{false};
     //     boost::signals2::scoped_connection c =
-    //         obs().on_insert(
-    //             [&ok](obs_t::const_iterator)
+    //         umap().on_insert(
+    //             [&ok](umap_t::const_iterator)
     //             {
     //                 ok = true;
     //             });
-    //     obs_t other{{2, "abc"}, {3, "def"}};
-    //     obs().swap(other);
+    //     umap_t other{{2, "abc"}, {3, "def"}};
+    //     umap().swap(other);
     //     assert(ok);
     // }
     
-    // //count
-    // {
-    //     obs.clear();
-    //     obs().insert({ {2, "abc"}, {3, "def"} });
-    //     assert(obs().count(2) == 1);
-    //     assert(obs().count(0) == 0);
-    // }
+    //count
+    {
+        umap_t umap;
+        umap.insert({ {2, "abc"}, {3, "def"} });
+        assert(umap.count(2) == 1);
+        assert(umap.count(0) == 0);
+    }
     
-    // //find fail
-    // {
-    //     obs.clear();
-    //     assert(obs().find(0) == obs().end());
-    //     const auto& cobs = obs();
-    //     assert(cobs.find(0) == obs().cend());
+    //find fail
+    {
+        umap_t umap;
+        assert(umap.find(0) == umap.end());
+        const auto& cumap = umap;
+        assert(cumap.find(0) == umap.cend());
         
-    // }
+    }
     
-    // //find success
-    // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs.emplace(3, "def");
-    //     auto it = obs().find(2);
-    //     assert(it != obs().end());
-    //     auto ob = *it;
-    //     // bool called{false};
-    //     // ob.second->on_change([&called]()
-    //     //                     { called = true; });
-    //     auto it2 = obs().find(2);
-    //     assert(it2 != obs().end());
-    //     // auto ob2 = *it2;
-    //     // ob2.second->assign("def");
-    //     // assert(ob.second->get() == "def");
-    //     // assert(called);        
-    // }
+    //find success
+    {
+        umap_t umap;
+        umap.emplace(2, "abc");
+        umap.emplace(3, "def");
+        auto it = umap.find(2);
+        assert(it != umap.end());
+    }
     
     // //equal_range
     // {
-    //     obs.clear();
-    //     obs.emplace(2, "abc");
-    //     obs.emplace(3, "def");
-    //     assert(obs().equal_range(2).first != obs().end());
-    //     assert(obs().equal_range(4).first == obs().end());
+    //     umap.clear();
+    //     umap.emplace(2, "abc");
+    //     umap.emplace(3, "def");
+    //     assert(umap().equal_range(2).first != umap().end());
+    //     assert(umap().equal_range(4).first == umap().end());
     // }
 
 }
