@@ -16,7 +16,8 @@ class mapped_type_proxy
     Observable* _observable;
     typename Observable::Model::iterator _it;
 public:
-    mapped_type_proxy(Observable& observable, typename Observable::Model::iterator it)
+    mapped_type_proxy(Observable& observable,
+                      typename Observable::Model::iterator it)
         : _observable(&observable)
         , _it(it)
     {}

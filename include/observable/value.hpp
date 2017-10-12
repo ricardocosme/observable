@@ -20,6 +20,7 @@ class value
 {    
     Observed_ _observed;
     boost::signals2::signal<void(const Observed_&)> _on_change;
+    friend class mapped_parent_observable;
     friend class parent_observable;
 public:    
     using Observed = Observed_;

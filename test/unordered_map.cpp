@@ -1,7 +1,7 @@
 #include <observable/unordered_map.hpp>
 
 #include <string>
-#include <iostream>
+
 using namespace observable;
 
 using umap_t = unordered_map<int, std::string>;
@@ -33,7 +33,6 @@ int main()
     }
 
     {
-        std::vector<std::pair<int, std::string>> src{{0, "abc"}, {1, "def"}};
         umap_t umap({std::pair<const int, std::string>{0, "abc"},
                       std::pair<const int, std::string>{1, "def"}});
         assert(umap.size() == 2);

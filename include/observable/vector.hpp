@@ -7,6 +7,7 @@
 #pragma once
 
 #include "observable/is_observable.hpp"
+#include "observable/parent_observable.hpp"
 #include "observable/proxy.hpp"
 
 #include <boost/signals2/signal.hpp>
@@ -352,36 +353,6 @@ public:
     template<typename F>
     boost::signals2::connection on_value_change(F&& f)
     { return _on_value_change.connect(std::forward<F>(f)); }
-};
-
-struct parent_observable
-{
-    template<typename Observable>
-    static void watch_child(Observable& observable,
-                            typename Observable::value_type& e)
-    {
-        e._on_change.connect
-            (0, 
-             [&observable](const typename Observable::value_type& changed)
-             {
-                 observable._on_value_change(observable, changed);
-                 observable._on_change(observable);
-             });             
-    }
-    
-    template<typename Observable>
-    static void watch_childs(Observable& observable)
-    {
-        for(auto& e : observable._container)
-            watch_child(observable, e);
-    }
-
-    template<typename Observable>
-    static void unwatch_childs(Observable& observable)
-    {        
-        for(auto& e : observable._container)
-            e._on_change.disconnect(0);        
-    }
 };
     
 template<typename T,

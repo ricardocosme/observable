@@ -8,6 +8,8 @@
 
 #include "observable/is_observable.hpp"
 #include "observable/proxy.hpp"
+#include "observable/mapped_parent_observable.hpp"
+#include "observable/mapped_type_proxy.hpp"
 
 #include <boost/signals2.hpp>
 #include <boost/iterator.hpp>
@@ -30,67 +32,19 @@ template<typename Key,
 class map;
         
 template<typename Observable>    
-class mapped_type_proxy
-{
-    Observable* _observable;
-    typename Observable::Model::iterator _it;
-public:
-    mapped_type_proxy(Observable& observable, typename Observable::Model::iterator it)
-        : _observable(&observable)
-        , _it(it)
-    {}
-    
-    template<typename U>
-    mapped_type_proxy<Observable>& operator=(U&& rhs)
-    {
-        _it->second = std::forward<U>(rhs);
-        _observable->_on_value_change(*_observable, _it);
-        _observable->_on_change(*_observable);
-        return *this;
-    }
-    
-    const typename Observable::mapped_type& get() const noexcept
-    { return _it->second; }
-};
-
-template<typename Observable>
-inline bool operator==(const mapped_type_proxy<Observable>& lhs,
-                       const mapped_type_proxy<Observable>& rhs)
-{ return lhs.get() == rhs.get(); }
-    
-template<typename Observable>
-inline bool operator!=(const mapped_type_proxy<Observable>& lhs,
-                       const mapped_type_proxy<Observable>& rhs)
-{ return !(lhs == rhs); }
-    
-template<typename Observable>
-inline bool operator==(const mapped_type_proxy<Observable>& lhs,
-                       const typename Observable::mapped_type& rhs)
-{ return lhs.get() == rhs; }
-    
-template<typename Observable>
-inline bool operator!=(const mapped_type_proxy<Observable>& lhs,
-                       const typename Observable::mapped_type& rhs)
-{ return !(lhs == rhs); }
-    
-template<typename Observable>
-inline bool operator==(const typename Observable::mapped_type& lhs,
-                       const mapped_type_proxy<Observable>& rhs)
-{ return lhs == rhs.get(); }
-    
-template<typename Observable>
-inline bool operator!=(const typename Observable::mapped_typexo& lhs,
-                       const mapped_type_proxy<Observable>& rhs)
-{ return !(lhs == rhs); }
-    
-template<typename Observable>    
 class map_iterator
     : public boost::iterator_adaptor<
         map_iterator<Observable>,
         typename Observable::Model::iterator,
-        proxy<Observable>,
+        std::pair<
+            typename Observable::Model::key_type,
+            mapped_type_proxy<Observable>
+        >,
         boost::bidirectional_traversal_tag,
-        proxy<Observable>,
+        std::pair<
+            typename Observable::Model::key_type,
+            mapped_type_proxy<Observable>
+        >,
         typename Observable::Model::difference_type
     >
 {
@@ -105,8 +59,17 @@ public:
 private:
     friend class boost::iterator_core_access;
     
-    proxy<Observable> dereference() const
-    { return {*_observable, this->base_reference()}; }
+    std::pair<
+        typename Observable::Model::key_type,
+        mapped_type_proxy<Observable>
+        >
+    dereference() const
+    {
+        auto it = this->base_reference();
+        return std::make_pair(it->first,
+                              mapped_type_proxy<Observable>
+                              {*_observable, this->base_reference()});
+    }
     
     Observable* _observable{nullptr};    
 };
@@ -130,9 +93,20 @@ class map<
     
     boost::signals2::signal<void(const map<Key, T, Compare, Allocator, Model_>&,
                                  typename container_t::const_iterator)>
-    _after_erase, _after_insert, _before_erase, _on_value_change;
+    _after_erase, _after_insert;
     
-    boost::signals2::signal<void(const map<Key, T, Compare, Allocator, Model_>&)> _on_change;
+    boost::signals2::signal<
+        bool(const map<Key, T, Compare, Allocator, Model_>&,
+             typename container_t::const_iterator)>
+    _before_erase;
+    
+    boost::signals2::signal<
+        void(const map<Key, T, Compare, Allocator, Model_>&,
+             const typename container_t::value_type&)>
+    _on_value_change;
+    
+    boost::signals2::signal<
+        void(const map<Key, T, Compare, Allocator, Model_>&)> _on_change;
 
     friend class proxy<map<Key, T, Compare, Allocator, Model_>>;
     friend class mapped_type_proxy<map<Key, T, Compare, Allocator, Model_>>;
@@ -145,7 +119,11 @@ public:
     using mapped_type = typename container_t::mapped_type;
     using value_type = typename container_t::value_type;
     using key_compare = typename container_t::key_compare;
-    using reference = proxy<map<Key, T, Compare, Allocator, Model_>>;
+    using reference = std::pair<
+        key_type,
+        mapped_type_proxy<
+            map<Key, T, Compare, Allocator, Model_>>
+        >;
     using const_reference = typename container_t::const_reference;
     using pointer = reference*;
     using const_pointer = typename container_t::const_pointer;
@@ -168,12 +146,6 @@ public:
         : _container(std::move(l))
     {}
     
-    map(container_t observed)
-    {
-        for(auto& e : observed)
-            _container.insert(std::move(e));
-    }
-
     map(map&& rhs)
         noexcept(std::is_nothrow_move_constructible<value_type>::value)
         : _container(std::move(rhs._container))
@@ -266,36 +238,52 @@ public:
         return {*this, it};
     }
     
-    void clear() noexcept
+    bool clear() noexcept
     {
-        _before_erase(*this, _container.cend());
+        if(_before_erase(*this, _container.cend()) == false)
+            return false;
         _container.clear();
-        _after_erase(*this, const_iterator{});
+        _after_erase(*this, _container.cend());
         _on_change(*this);
+        return true;
     }
     
-    iterator erase(const_iterator pos)        
+    std::pair<iterator, bool> erase(const_iterator pos)        
     {
-        _before_erase(*this, pos);
+        if(_before_erase(*this, pos) == false)
+            return std::make_pair(end(), false);
         auto it = _container.erase(pos);
         _after_erase(*this, it);
         _on_change(*this);
-        return iterator{*this, it};
+        return std::make_pair(iterator{*this, it}, true);
     }
     
-    iterator erase(const_iterator first,
-                   const_iterator last)        
+    std::pair<iterator, bool> erase(iterator pos)        
     {
-        _before_erase(*this, first);
+        if(_before_erase(*this, pos.base()) == false)
+            return std::make_pair(end(), false);
+        auto it = _container.erase(pos.base());
+        _after_erase(*this, it);
+        _on_change(*this);
+        return std::make_pair(iterator{*this, it}, true);
+    }
+    
+    std::pair<iterator, bool> erase(const_iterator first,
+                                    const_iterator last)        
+    {
+        //TODO range?
+        if(_before_erase(*this, first) == false)
+            return std::make_pair(end(), false);
         auto it = _container.erase(first, last);
         _after_erase(*this, it);
         _on_change(*this);
-        return iterator{*this, it};
+        return std::make_pair(iterator{*this, it}, true);
     }
     
     size_type erase(const key_type& key)
     {
         auto rng = _container.equal_range(key);
+        if(rng.first == _container.end()) return 0;
         auto before_size = _container.size();
         _before_erase(*this, rng.first);
         _container.erase(rng.first, rng.second);
@@ -394,7 +382,7 @@ public:
         _container.insert(first, last);
         if (_container.size() != before_size)
         {
-            _after_insert(*this, const_iterator{}); //TODO
+            _after_insert(*this, _container.cend()); //TODO
             _on_change(*this);
         }
     }
@@ -485,28 +473,22 @@ class map<
     
     boost::signals2::signal<void(const map<Key, T, Compare, Allocator, Model_>&,
                                  typename container_t::const_iterator)>
-    _after_erase, _after_insert, _before_erase, _on_value_change;
+    _after_erase, _after_insert;
     
-    boost::signals2::signal<void(const map<Key, T, Compare, Allocator, Model_>&)> _on_change;
+    boost::signals2::signal<
+        bool(const map<Key, T, Compare, Allocator, Model_>&,
+             typename container_t::const_iterator)>
+    _before_erase;
+    
+    boost::signals2::signal<
+        void(const map<Key, T, Compare, Allocator, Model_>&,
+             const typename container_t::value_type&)>
+    _on_value_change;
+    
+    boost::signals2::signal<
+        void(const map<Key, T, Compare, Allocator, Model_>&)> _on_change;
 
-    std::unordered_map<
-        typename container_t::const_pointer,
-        boost::signals2::scoped_connection            
-    > _ptr2value;
-    
-    void insert_value_change_conn(typename container_t::value_type& e)
-    {
-        _ptr2value.emplace
-            (&e,
-             e.second.on_change
-             ([this, &e](const typename container_t::mapped_type&)
-              {
-                  auto it = _container.find(e.first);
-                  assert(it != _container.end());
-                  _on_value_change(*this, it);
-                  _on_change(*this);
-              }));             
-    }
+    friend class mapped_parent_observable;
     friend struct serialization::map;
     
 public:
@@ -540,6 +522,35 @@ public:
         : _container(std::move(l))
     {}
     
+    map(map&& rhs)
+        noexcept(std::is_nothrow_move_constructible<value_type>::value)
+        : _container(std::move(rhs._container))
+        , _after_erase(std::move(rhs._after_erase))
+        , _after_insert(std::move(rhs._after_insert))
+        , _before_erase(std::move(rhs._before_erase))
+        , _on_value_change(std::move(rhs._on_value_change))
+        , _on_change(std::move(rhs._on_change))
+    {
+        mapped_parent_observable::unwatch_childs(*this);
+        mapped_parent_observable::watch_childs(*this);
+    }
+
+    map& operator=(map&& rhs)
+        noexcept(std::is_nothrow_move_constructible<value_type>::value)
+    {
+        _container = std::move(rhs._container);
+        _after_erase = std::move(rhs._after_erase);
+        _after_insert = std::move(rhs._after_insert);
+        _before_erase = std::move(rhs._before_erase);
+        _on_value_change = std::move(rhs._on_value_change);
+        _on_change = std::move(rhs._on_change);
+
+        mapped_parent_observable::unwatch_childs(*this);
+        mapped_parent_observable::watch_childs(*this);
+        
+        return *this;
+    }
+    
     iterator begin() noexcept
     { return _container.begin(); }
 
@@ -561,12 +572,12 @@ public:
     const_iterator end() const noexcept
     { return _container.end(); }
     
-    const_iterator cend() const noexcept
-    { return _container.cend(); }
-    
     reverse_iterator rend() noexcept
     { return _container.rend(); }
     
+    const_iterator cend() const noexcept
+    { return _container.cend(); }
+        
     const_reverse_iterator crend() const noexcept
     { return _container.crend(); }
     
@@ -591,42 +602,53 @@ public:
     mapped_type& operator[](key_type&& key)
     { return _container[std::move(key)]; }
     
-    void clear() noexcept
+    bool clear() noexcept
     {
-        _before_erase(*this, _container.cend());
+        if(_before_erase(*this, _container.cend()) == false)
+            return false;
         _container.clear();
-        _after_erase(*this, const_iterator{});
+        _after_erase(*this, _container.cend());
         _on_change(*this);
+        return true;
     }
     
-    iterator erase(const_iterator pos)        
+    std::pair<iterator, bool> erase(const_iterator pos)        
     {
-        _before_erase(*this, pos);
-        _ptr2value.erase(&*pos);
+        if(_before_erase(*this, pos) == false)
+            return std::make_pair(end(), false);
         auto it = _container.erase(pos);
         _after_erase(*this, it);
         _on_change(*this);
-        return it;
+        return std::make_pair(it, true);
     }
     
-    iterator erase(const_iterator first,
-                   const_iterator last)        
+    std::pair<iterator, bool> erase(iterator pos)        
     {
-        _before_erase(*this, first);
-        std::for_each(first, last,
-                      [this](const value_type& e)
-                      { _ptr2value.erase(&e); });
+        if(_before_erase(*this, pos) == false)
+            return std::make_pair(end(), false);
+        auto it = _container.erase(pos);
+        _after_erase(*this, it);
+        _on_change(*this);
+        return std::make_pair(it, true);
+    }
+    
+    std::pair<iterator, bool> erase(const_iterator first,
+                                    const_iterator last)        
+    {
+        //TODO range?
+        if(_before_erase(*this, first) == false)
+            return std::make_pair(end(), false);
         auto it = _container.erase(first, last);
         _after_erase(*this, it);
         _on_change(*this);
-        return it;
+        return std::make_pair(it, true);
     }
     
     size_type erase(const key_type& key)
     {
         auto rng = _container.equal_range(key);
+        if(rng.first == _container.end()) return 0;
         auto before_size = _container.size();
-        _ptr2value.erase(&*rng.first);
         _before_erase(*this, rng.first);
         _container.erase(rng.first, rng.second);
         auto n = before_size - _container.size();
@@ -646,14 +668,13 @@ public:
         {
             _after_insert(*this, ret.first);
             _on_change(*this);
-            insert_value_change_conn(*ret.first);
+            mapped_parent_observable::watch_child(*this, *ret.first);
         }
         return ret;
     }
     
     template<typename... Args>
-    iterator emplace_hint
-    (const_iterator hint, Args&&... args)
+    iterator emplace_hint(const_iterator hint, Args&&... args)
     {
         auto before_size = _container.size();
         auto it = _container.emplace_hint(hint, std::forward<Args>(args)...);
@@ -661,23 +682,10 @@ public:
         {
             _after_insert(*this, it);
             _on_change(*this);
-            insert_value_change_conn(*it);
+            mapped_parent_observable::watch_child(*this, *it);
         }
         return it;
     }
-
-    // std::pair<iterator, bool> insert
-    // (const value_type& value)
-    // {
-    //     auto ret = _container.insert(value);
-    //     if (ret.second)
-    //     {
-    //         _after_insert(*this, ret.first);
-    //         _on_change(*this);
-    //         insert_value_change_conn(*ret.first);
-    //     }
-    //     return ret;
-    // }
     
     std::pair<iterator, bool> insert(value_type&& value)
     {
@@ -686,7 +694,7 @@ public:
         {
             _after_insert(*this, ret.first);
             _on_change(*this);
-            insert_value_change_conn(*ret.first);
+            mapped_parent_observable::watch_child(*this, *ret.first);
         }
         return ret;
     }
@@ -700,7 +708,7 @@ public:
         {
             _after_insert(*this, it);
             _on_change(*this);
-            insert_value_change_conn(*it);
+            mapped_parent_observable::watch_child(*this, *it);
         }
         return it;
     }
@@ -709,15 +717,17 @@ public:
     void insert(InputIt first, InputIt last)
     {
         auto before_size = _container.size();
-        _container.insert(first, last);
+        std::for_each(first, last,
+                      [this](typename InputIt::value_type& e)
+                      {
+                          auto ret = _container.insert(std::move(e));
+                          mapped_parent_observable::watch_child
+                              (*this, *ret.first);
+                      });
         if (_container.size() != before_size)
         {
-            _after_insert(*this, const_iterator{}); //TODO
+            _after_insert(*this, _container.cend()); //TODO
             _on_change(*this);
-            //TODO
-            // std::for_each(it, it + std::distance(first, last),
-            //               [this](value_type& e)
-            //               { insert_value_change_conn(e); });
         }
     }
     

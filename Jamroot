@@ -18,8 +18,10 @@ project observable
 
 run test/class.cpp ;
 run test/map.cpp ;
+run test/map_of_observable.cpp ;
 run test/value.cpp ;
 run test/vector.cpp ;
 run test/vector_of_observable.cpp ;
 run test/unordered_map.cpp ;
+run test/unordered_map_of_observable.cpp ;
 

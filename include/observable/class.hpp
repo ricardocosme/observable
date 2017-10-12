@@ -72,6 +72,8 @@ class class_ : public Derived {
     //TODO: std::array
     std::vector<boost::signals2::scoped_connection> _conns;
     friend struct watch_members<class_<Observable, Derived, Member...>>;
+    friend struct mapped_parent_observable;
+    friend struct parent_observable;
     std::string _tag;
 
     void watch()
